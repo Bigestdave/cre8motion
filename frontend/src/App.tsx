@@ -22,11 +22,13 @@ import { UsageScreen } from './screens/UsageScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
 import { NotificationsScreen } from './screens/NotificationsScreen'
 
+import { LandingScreen } from './screens/LandingScreen'
+
 export default function App() {
   return (
     <HashRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/shows" replace />} />
+        <Route path="/" element={<LandingScreen />} />
 
         {/* Workspace */}
         <Route path="/shows" element={<ShowsHomeScreen />} />
