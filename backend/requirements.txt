@@ -8,5 +8,6 @@ psycopg2-binary
 dramatiq[redis,watch]
 redis
 python-dotenv
+python-multipart
 openai
 httpx
