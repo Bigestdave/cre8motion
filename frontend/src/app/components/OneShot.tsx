@@ -77,7 +77,7 @@ export function OneShot() {
           <p className="text-[14px] uppercase tracking-[1.5px] text-accent">
             Watch the showrunner work
           </p>
-          <h2 className="text-[clamp(40px,6vw,74px)] leading-[1.02] tracking-[-1.5px] text-ink">
+          <h2 className="text-[clamp(40px,6vw,74px)] font-semibold leading-[1.02] tracking-[-1.5px] text-ink">
             One shot.
             <br />
             Every stage of production.
