@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://cre8motion.onrender.com/api/:path*" },
-    { "source": "/media/:path*", "destination": "https://cre8motion.onrender.com/media/:path*" },
+    { "source": "/api/(.*)", "destination": "https://cre8motion.onrender.com/api/$1" },
+    { "source": "/media/(.*)", "destination": "https://cre8motion.onrender.com/media/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
