@@ -57,3 +57,15 @@ def get_episode(episode_id: str, db: Session = Depends(get_db)):
     if not episode:
         raise HTTPException(404, "Episode not found")
     return episode
+
+
+@router.patch("/{episode_id}")
+def update_episode(episode_id: str, payload: dict, db: Session = Depends(get_db)):
+    episode = db.query(Episode).filter(Episode.id == episode_id).first()
+    if not episode:
+        raise HTTPException(404, "Episode not found")
+    if "title" in payload and payload["title"]:
+        episode.title = str(payload["title"])[:200]
+    db.commit()
+    db.refresh(episode)
+    return episode
