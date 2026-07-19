@@ -1,0 +1,24 @@
+# Secrets — never commit
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+venv/
+*.db
+artifacts/
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+*.log
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+desktop.ini
