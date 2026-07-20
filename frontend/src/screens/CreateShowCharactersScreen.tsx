@@ -59,38 +59,40 @@ export function CreateShowCharactersScreen() {
       setProgress('Creating show…')
       const show = await createShow(proposal)
 
-      // 2. Create characters; generate references with wan2.7 unless the user uploaded their own
+      // 2. Create character records (fast, sequential to preserve order)
+      const created: Array<{ id: string; name: string; index: number }> = []
       for (let i = 0; i < proposal.characters.length; i++) {
         const char = proposal.characters[i]
         if (!char.name) continue
-        const created = await createCharacter(show.id, char)
-        const uploads = refFiles[i] || []
-        if (uploads.length > 0) {
-          setProgress(`Uploading references for ${char.name}…`)
-          for (const file of uploads) {
-            try {
-              await uploadCharacterReference(created.id, file)
-            } catch (e) {
-              console.error('reference upload failed', e)
-            }
-          }
-        } else {
-          setProgress(`wan2.7 is drawing ${char.name}…`)
-          try {
-            await generateCharacterReference(created.id)
-          } catch (e) {
-            console.error('reference generation failed', e)
-          }
-        }
+        const c = await createCharacter(show.id, char)
+        created.push({ id: c.id, name: c.name, index: i })
       }
 
-      // 3. Generate the show poster with qwen-image (best-effort; show works without it)
-      setProgress('qwen-image is painting your show poster…')
-      try {
-        await generateShowPoster(show.id)
-      } catch (e) {
-        console.error('poster generation failed', e)
-      }
+      // 3. Generate/upload all artwork in PARALLEL (each is independent)
+      const names = created.filter((c) => !(refFiles[c.index]?.length)).map((c) => c.name)
+      setProgress(
+        names.length
+          ? `wan2.2 is drawing ${names.join(', ')} · qwen-image is painting the poster…`
+          : 'Uploading references · qwen-image is painting the poster…',
+      )
+      const jobs: Promise<unknown>[] = created.map(async (c) => {
+        const uploads = refFiles[c.index] || []
+        if (uploads.length > 0) {
+          for (const file of uploads) {
+            await uploadCharacterReference(c.id, file).catch((e) => console.error('upload failed', e))
+          }
+        } else {
+          await generateCharacterReference(c.id).catch((e) => console.error('generation failed', e))
+        }
+      })
+      jobs.push(generateShowPoster(show.id).catch((e) => console.error('poster failed', e)))
+
+      // Don't trap the user: navigate after 25s even if art is still rendering —
+      // the show page will pick up images as they finish.
+      await Promise.race([
+        Promise.allSettled(jobs),
+        new Promise((resolve) => setTimeout(resolve, 25000)),
+      ])
 
       // 4. Navigate to show overview
       navigate(`/show/${show.id}`)

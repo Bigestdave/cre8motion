@@ -32,13 +32,14 @@ async def upload_reference(character_id: str, reference_type: str = "front_view"
     content = await file.read()
     with open(full_path, "wb") as f:
         f.write(content)
-    
+
     artifact = Artifact(
         artifact_type="character_reference",
         storage_key=storage_key,
         mime_type=file.content_type or "image/png",
         file_size_bytes=len(content),
-        status="approved"
+        status="approved",
+        data=content,
     )
     db.add(artifact)
     db.commit()

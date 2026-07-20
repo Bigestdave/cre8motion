@@ -71,6 +71,10 @@ def download_artifact(artifact_id: str, db: Session = Depends(get_db)):
     if os.path.commonpath([artifacts_root, file_path]) != artifacts_root:
         raise HTTPException(status_code=400, detail="Invalid artifact storage key")
     if not os.path.isfile(file_path):
+        # Disk copy lost (ephemeral filesystem) — serve the DB-persisted bytes if present.
+        if artifact.data:
+            from fastapi.responses import Response
+            return Response(content=artifact.data, media_type=artifact.mime_type or "application/octet-stream")
         raise HTTPException(status_code=404, detail="Artifact file is not available")
 
     return FileResponse(file_path, media_type=artifact.mime_type or "application/octet-stream")

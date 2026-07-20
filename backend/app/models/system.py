@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, JSON, Boolean
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, JSON, Boolean, LargeBinary
 import uuid
 from datetime import datetime
 from app.db.base_class import Base
@@ -21,6 +21,9 @@ class Artifact(Base):
     checksum = Column(String, nullable=True)
     status = Column(String, default="created")
     created_at = Column(DateTime, default=datetime.utcnow)
+    # Small artifacts (posters, references, keyframes) are persisted in the DB so
+    # they survive ephemeral-disk redeploys; large video files stay on disk.
+    data = Column(LargeBinary, nullable=True)
 
 class WorkflowEvent(Base):
     __tablename__ = "workflow_events"

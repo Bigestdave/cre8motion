@@ -160,15 +160,34 @@ def get_show(show_id: str, db: Session = Depends(get_db)):
 
 @router.delete("/{show_id}")
 def delete_show(show_id: str, db: Session = Depends(get_db)):
+    from app.models.episode import EpisodeCharacter, EpisodeLocation
+    from app.models.production import ProductionRun, Shot, GenerationAttempt, QualityReport
+
     show = db.query(Show).filter(Show.id == show_id).first()
     if not show:
         raise HTTPException(404, "Show not found")
+
+    episode_ids = [e.id for e in db.query(Episode).filter(Episode.show_id == show_id).all()]
     char_ids = [c.id for c in db.query(Character).filter(Character.show_id == show_id).all()]
+
+    # Production graph: quality reports / attempts -> shots -> runs
+    if episode_ids:
+        run_ids = [r.id for r in db.query(ProductionRun).filter(ProductionRun.episode_id.in_(episode_ids)).all()]
+        if run_ids:
+            db.query(QualityReport).filter(QualityReport.production_run_id.in_(run_ids)).delete(synchronize_session=False)
+            db.query(GenerationAttempt).filter(GenerationAttempt.production_run_id.in_(run_ids)).delete(synchronize_session=False)
+            db.query(Shot).filter(Shot.production_run_id.in_(run_ids)).delete(synchronize_session=False)
+            db.query(ProductionRun).filter(ProductionRun.id.in_(run_ids)).delete(synchronize_session=False)
+        db.query(EpisodeCharacter).filter(EpisodeCharacter.episode_id.in_(episode_ids)).delete(synchronize_session=False)
+        db.query(EpisodeLocation).filter(EpisodeLocation.episode_id.in_(episode_ids)).delete(synchronize_session=False)
+
+    # Character graph
     if char_ids:
         db.query(CharacterReference).filter(CharacterReference.character_id.in_(char_ids)).delete(synchronize_session=False)
         db.query(Prop).filter(Prop.current_owner_character_id.in_(char_ids)).update(
             {Prop.current_owner_character_id: None}, synchronize_session=False
         )
+
     db.query(Prop).filter(Prop.show_id == show_id).delete(synchronize_session=False)
     db.query(Location).filter(Location.show_id == show_id).delete(synchronize_session=False)
     db.query(Episode).filter(Episode.show_id == show_id).delete(synchronize_session=False)

@@ -76,12 +76,20 @@ def _store_artifact(db: Session, image_url: str, storage_key: str, artifact_type
     local_path = get_artifact_path(storage_key)
     os.makedirs(os.path.dirname(local_path), exist_ok=True)
     images.download_image(image_url, local_path)
+    # Persist bytes in the DB too — Render's disk is ephemeral, Postgres is not.
+    blob = None
+    try:
+        with open(local_path, "rb") as f:
+            blob = f.read()
+    except OSError:
+        pass
     artifact = Artifact(
         artifact_type=artifact_type,
         storage_key=storage_key,
         mime_type="image/png",
-        file_size_bytes=os.path.getsize(local_path) if os.path.exists(local_path) else None,
+        file_size_bytes=len(blob) if blob else None,
         status="approved",
+        data=blob,
     )
     db.add(artifact)
     db.commit()

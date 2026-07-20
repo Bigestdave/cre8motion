@@ -15,14 +15,14 @@ const BANNERS: Record<string, string> = {
   'the lucky wallet': posterLuckyWallet,
 }
 
-// Cache of showId -> generated poster URL (or null when the backend has none).
-const generatedPosters = new Map<string, string | null>()
+// Cache of showId -> generated poster URL. Only positive results are cached —
+// a missing poster is re-checked on next mount (it may still be generating).
+const generatedPosters = new Map<string, string>()
 
 /** Resolve a show's poster: backend-generated first (async), bundled art as fallback. */
 export async function resolvePoster(showId: string, title?: string | null): Promise<string | undefined> {
-  if (generatedPosters.has(showId)) {
-    return generatedPosters.get(showId) || showPoster(title)
-  }
+  const cached = generatedPosters.get(showId)
+  if (cached) return cached
   try {
     const response = await fetch(`${API_BASE_URL}/shows/${encodeURIComponent(showId)}/poster`)
     if (response.ok) {
@@ -34,7 +34,6 @@ export async function resolvePoster(showId: string, title?: string | null): Prom
   } catch {
     /* backend unreachable — fall through to bundled art */
   }
-  generatedPosters.set(showId, null)
   return showPoster(title)
 }
 
