@@ -15,6 +15,27 @@ def get_db():
     finally:
         db.close()
 
+@router.get("/events/recent")
+def recent_events(limit: int = 20, db: Session = Depends(get_db)):
+    """Latest workflow events across all productions — powers the notification bell."""
+    events = (
+        db.query(WorkflowEvent)
+        .order_by(WorkflowEvent.created_at.desc())
+        .limit(min(limit, 50))
+        .all()
+    )
+    return [
+        {
+            "id": e.id,
+            "event_type": e.event_type,
+            "severity": e.severity,
+            "payload": e.payload,
+            "production_run_id": e.production_run_id,
+            "created_at": str(e.created_at),
+        }
+        for e in events
+    ]
+
 @router.get("/productions/{production_id}/events")
 def get_events(production_id: str, db: Session = Depends(get_db)):
     events = db.query(WorkflowEvent).filter(

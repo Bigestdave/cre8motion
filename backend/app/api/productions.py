@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.models.episode import Episode
 from app.models.production import ProductionRun
+from app.models.show import Show
 from app.services.orchestrator import execute_production_pipeline
 
 router = APIRouter(prefix="/api/productions", tags=["Productions"])
@@ -45,6 +46,32 @@ def start_production(episode_id: str, background_tasks: BackgroundTasks, db: Ses
 
     background_tasks.add_task(asyncio.run, execute_production_pipeline(run.id))
     return {"message": "Production started", "production_id": run.id, "version": run.version}
+
+@router.get("/")
+def list_productions(db: Session = Depends(get_db)):
+    """All production runs with their episode and show context, newest first."""
+    runs = db.query(ProductionRun).order_by(ProductionRun.started_at.desc().nullslast()).all()
+    result = []
+    for run in runs:
+        episode = db.query(Episode).filter(Episode.id == run.episode_id).first()
+        show = db.query(Show).filter(Show.id == episode.show_id).first() if episode else None
+        result.append({
+            "id": run.id,
+            "episode_id": run.episode_id,
+            "version": run.version,
+            "status": run.status,
+            "current_stage": run.current_stage,
+            "budget_limit": run.budget_limit,
+            "budget_used": run.budget_used,
+            "started_at": str(run.started_at) if run.started_at else None,
+            "completed_at": str(run.completed_at) if run.completed_at else None,
+            "failure_reason": run.failure_reason,
+            "episode_number": episode.episode_number if episode else None,
+            "episode_title": episode.title if episode else None,
+            "show_id": show.id if show else None,
+            "show_title": show.title if show else None,
+        })
+    return result
 
 @router.get("/{production_id}")
 def get_production(production_id: str, db: Session = Depends(get_db)):

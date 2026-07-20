@@ -64,6 +64,23 @@ export interface ProductionRun {
   failure_reason?: string | null
 }
 
+export interface ProductionListItem {
+  id: string
+  episode_id: string
+  version: number
+  status: string
+  current_stage: string
+  budget_limit: number
+  budget_used: number
+  started_at?: string | null
+  completed_at?: string | null
+  failure_reason?: string | null
+  episode_number?: number | null
+  episode_title?: string | null
+  show_id?: string | null
+  show_title?: string | null
+}
+
 export interface ProductionStartResponse {
   message: string
   production_id: string
@@ -215,8 +232,21 @@ export function createEpisode(showId: string, data: EpisodeDraft & { duration_se
 }
 
 // Productions
+export const listProductions = () => fetchJson<ProductionListItem[]>('/productions/')
 export const startProduction = (episodeId: string) =>
   fetchJson<ProductionStartResponse>(`/productions/${encodeURIComponent(episodeId)}`, { method: 'POST' })
+
+// Events / notifications
+export interface WorkflowEventItem {
+  id: string
+  event_type: string
+  severity: string
+  payload?: { message?: string } & Record<string, unknown>
+  production_run_id?: string | null
+  created_at?: string | null
+}
+
+export const getRecentEvents = () => fetchJson<WorkflowEventItem[]>('/events/recent')
 export const getProduction = (productionId: string) =>
   fetchJson<ProductionRun>(`/productions/${encodeURIComponent(productionId)}`)
 export const getProductionShots = (productionId: string) =>

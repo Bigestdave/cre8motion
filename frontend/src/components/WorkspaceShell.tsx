@@ -5,6 +5,24 @@ import { ArrowLeft, ChevronDown } from './icons'
 import { Thumb } from './ShotStrip'
 import logoUrl from '../assets/logo.png'
 import { getRecentShows } from '../data/recents'
+import { getRecentEvents, type WorkflowEventItem } from '../data/api'
+
+function prettyEventType(t?: string): string {
+  if (!t) return 'Event'
+  return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase().replace(/_/g, ' ')
+}
+
+function eventTimeAgo(iso?: string | null): string {
+  if (!iso) return ''
+  const then = new Date(iso.replace(' ', 'T') + (iso.includes('Z') ? '' : 'Z')).getTime()
+  if (Number.isNaN(then)) return ''
+  const mins = Math.max(0, Math.round((Date.now() - then) / 60000))
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.round(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.round(hours / 24)}d ago`
+}
 
 const workspaceNav = [
   { label: 'Shows', icon: GridIcon, to: '/shows' },
@@ -23,6 +41,8 @@ interface WorkspaceShellProps {
 
 export function WorkspaceShell({ children, breadcrumb, backTo = '/shows' }: WorkspaceShellProps) {
   const [showNotifications, setShowNotifications] = useState(false)
+  const [events, setEvents] = useState<WorkflowEventItem[]>([])
+  const [eventsLoading, setEventsLoading] = useState(false)
   const recents = getRecentShows()
 
   return (
@@ -132,57 +152,54 @@ export function WorkspaceShell({ children, breadcrumb, backTo = '/shows' }: Work
           </div>
           <div className="relative">
             <button
-              onClick={() => setShowNotifications(!showNotifications)}
+              onClick={() => {
+                const next = !showNotifications
+                setShowNotifications(next)
+                if (next) {
+                  setEventsLoading(true)
+                  getRecentEvents()
+                    .then(setEvents)
+                    .catch(() => setEvents([]))
+                    .finally(() => setEventsLoading(false))
+                }
+              }}
               className="relative text-ink-2 transition-colors hover:text-ink"
               aria-label="Notifications"
             >
               <BellIcon />
-              <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-accent" />
             </button>
-            
+
             {showNotifications && (
               <div className="absolute right-0 top-full mt-3 w-[360px] rounded-xl border border-line bg-surface shadow-2xl z-50 overflow-hidden">
                 <div className="flex items-center justify-between border-b border-line-soft p-4 bg-[#0A0A0A]">
                   <span className="font-semibold text-ink text-[14.5px]">Notifications</span>
-                  <button className="text-[12.5px] text-accent hover:underline">Mark all read</button>
                 </div>
                 <div className="max-h-[400px] overflow-y-auto divide-y divide-line">
-                  <div className="p-4 flex items-start gap-3 hover:bg-selected transition-colors bg-[#0E0E0E08] relative">
-                    <span className="absolute left-2 top-5 h-2 w-2 rounded-full bg-accent" />
-                    <div className="mt-0.5 text-warn ml-2">
-                      <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 2l8 14H2l8-14z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/><path d="M10 8v4M10 15h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  {eventsLoading && (
+                    <div className="p-6 text-center text-[13.5px] text-ink-3">Loading…</div>
+                  )}
+                  {!eventsLoading && events.length === 0 && (
+                    <div className="p-6 text-center text-[13.5px] text-ink-3">
+                      No notifications yet — production events will appear here.
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-[14px] font-semibold text-ink">Attention Required</h3>
-                      <p className="text-[13px] text-ink-3 mt-0.5 leading-snug">Production 'Tiny Kingdom E02' requires attention: Storyboard QC failed.</p>
-                      <span className="text-[11.5px] text-ink-4 block mt-1.5">12m ago</span>
-                    </div>
-                  </div>
-                  <div className="p-4 flex items-start gap-3 hover:bg-selected transition-colors">
-                    <div className="mt-0.5 text-success ml-4">
-                      <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M4 10l4 4 8-8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-[14px] font-medium text-ink-2">Style Profile Generated</h3>
-                      <p className="text-[13px] text-ink-3 mt-0.5 leading-snug">Production 'Fruitful Secrets E04' style profile generated successfully.</p>
-                      <span className="text-[11.5px] text-ink-4 block mt-1.5">5m ago</span>
-                    </div>
-                  </div>
-                  <div className="p-4 flex items-start gap-3 hover:bg-selected transition-colors">
-                    <div className="mt-0.5 text-success ml-4">
-                      <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M4 10l4 4 8-8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-[14px] font-medium text-ink-2">Compilation Completed</h3>
-                      <p className="text-[13px] text-ink-3 mt-0.5 leading-snug">Video compilation completed for 'Last Seed E01'. Ready for review.</p>
-                      <span className="text-[11.5px] text-ink-4 block mt-1.5">2h ago</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="border-t border-line-soft bg-raised p-2 text-center">
-                  <Link to="/notifications" onClick={() => setShowNotifications(false)} className="text-[13px] font-medium text-ink-2 hover:text-ink transition-colors block py-1.5">
-                    View all notifications
-                  </Link>
+                  )}
+                  {!eventsLoading &&
+                    events.map((e) => (
+                      <div key={e.id} className="p-4 flex items-start gap-3 hover:bg-selected transition-colors">
+                        <span
+                          className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
+                            e.severity === 'error' ? 'bg-danger' : e.severity === 'warning' ? 'bg-warn' : 'bg-accent'
+                          }`}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-[14px] font-medium text-ink-2">{prettyEventType(e.event_type)}</h3>
+                          {typeof e.payload?.message === 'string' && (
+                            <p className="text-[13px] text-ink-3 mt-0.5 leading-snug">{e.payload.message}</p>
+                          )}
+                          <span className="text-[11.5px] text-ink-4 block mt-1.5">{eventTimeAgo(e.created_at)}</span>
+                        </div>
+                      </div>
+                    ))}
                 </div>
               </div>
             )}

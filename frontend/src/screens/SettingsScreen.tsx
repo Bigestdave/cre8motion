@@ -2,23 +2,54 @@ import { useState } from 'react'
 import { WorkspaceShell } from '../components/WorkspaceShell'
 import { WarnTriangle } from '../components/icons'
 
+const SETTINGS_KEY = 'cre8motion.settings'
+
+function loadSettings(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')
+  } catch {
+    return {}
+  }
+}
+
+function saveSettings(patch: Record<string, string>) {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...loadSettings(), ...patch }))
+}
+
 export function SettingsScreen() {
-  const [activeTab, setActiveTab] = useState<'General' | 'Production' | 'Notifications' | 'Connections' | 'Storage'>('General')
-  
+  const [activeTab, setActiveTab] = useState<'General' | 'Production'>('General')
+  const saved = loadSettings()
+  const [savedFlash, setSavedFlash] = useState<string | null>(null)
+
   // General State
-  const [workspaceName, setWorkspaceName] = useState("Dave's Studio")
+  const [workspaceName, setWorkspaceName] = useState(saved.workspaceName || "Dave's Studio")
   const [defaultWorkspace] = useState("Dave's Studio")
-  const [timeZone, setTimeZone] = useState("Africa/Lagos")
-  const [themeMode, setThemeMode] = useState("Dark")
+  const [timeZone, setTimeZone] = useState(saved.timeZone || "Africa/Lagos")
+  const [themeMode, setThemeMode] = useState(saved.themeMode || "Dark")
 
   // Production State
-  const [defaultDuration, setDefaultDuration] = useState("45 seconds")
-  const [aspectRatio, setAspectRatio] = useState("Vertical · 9:16")
-  const [defaultBudget, setDefaultBudget] = useState("100 units")
-  const [retryReserve, setRetryReserve] = useState("16 units")
-  const [maxAttempts, setMaxAttempts] = useState("2")
-  const [humanCheckpoints, setHumanCheckpoints] = useState("Only when production is blocked")
-  const [aiBehavior, setAiBehavior] = useState<"safe" | "pause">("safe")
+  const [defaultDuration, setDefaultDuration] = useState(saved.defaultDuration || "45 seconds")
+  const [aspectRatio, setAspectRatio] = useState(saved.aspectRatio || "Vertical · 9:16")
+  const [defaultBudget, setDefaultBudget] = useState(saved.defaultBudget || "100 units")
+  const [retryReserve, setRetryReserve] = useState(saved.retryReserve || "16 units")
+  const [maxAttempts, setMaxAttempts] = useState(saved.maxAttempts || "2")
+  const [humanCheckpoints, setHumanCheckpoints] = useState(saved.humanCheckpoints || "Only when production is blocked")
+  const [aiBehavior, setAiBehavior] = useState<"safe" | "pause">((saved.aiBehavior as 'safe' | 'pause') || "safe")
+
+  const flash = (msg: string) => {
+    setSavedFlash(msg)
+    setTimeout(() => setSavedFlash(null), 2500)
+  }
+
+  const handleSaveGeneral = () => {
+    saveSettings({ workspaceName, timeZone, themeMode })
+    flash('General settings saved')
+  }
+
+  const handleSaveProduction = () => {
+    saveSettings({ defaultDuration, aspectRatio, defaultBudget, retryReserve, maxAttempts, humanCheckpoints, aiBehavior })
+    flash('Production defaults saved')
+  }
 
   return (
     <WorkspaceShell>
@@ -30,7 +61,7 @@ export function SettingsScreen() {
 
           {/* Settings Tabs */}
           <div className="flex gap-6 border-b border-line-soft mt-6 mb-8">
-            {(['General', 'Production', 'Notifications', 'Connections', 'Storage'] as const).map((tab) => (
+            {(['General', 'Production'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -109,10 +140,11 @@ export function SettingsScreen() {
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-line-soft">
-                <button className="h-[42px] px-6 bg-ink text-app font-medium text-[14px] rounded-lg hover:bg-ink-2 transition-colors">
+              <div className="pt-6 border-t border-line-soft flex items-center gap-4">
+                <button onClick={handleSaveGeneral} className="h-[42px] px-6 bg-ink text-app font-medium text-[14px] rounded-lg hover:bg-ink-2 transition-colors">
                   Save changes
                 </button>
+                {savedFlash && <span className="text-[13.5px] text-accent">{savedFlash}</span>}
               </div>
             </div>
           )}
@@ -232,18 +264,12 @@ export function SettingsScreen() {
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-line-soft">
-                <button className="h-[42px] px-6 bg-ink text-app font-medium text-[14px] rounded-lg hover:bg-ink-2 transition-colors">
+              <div className="pt-6 border-t border-line-soft flex items-center gap-4">
+                <button onClick={handleSaveProduction} className="h-[42px] px-6 bg-ink text-app font-medium text-[14px] rounded-lg hover:bg-ink-2 transition-colors">
                   Save production defaults
                 </button>
+                {savedFlash && <span className="text-[13.5px] text-accent">{savedFlash}</span>}
               </div>
-            </div>
-          )}
-
-          {/* OTHER Placeholder tabs */}
-          {activeTab !== 'General' && activeTab !== 'Production' && (
-            <div className="h-[300px] flex items-center justify-center border border-dashed border-line rounded-xl text-ink-4 text-[14.5px]">
-              {activeTab} settings are under active configuration.
             </div>
           )}
         </div>
