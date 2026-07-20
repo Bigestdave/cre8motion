@@ -2,12 +2,19 @@ import { useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { WizardShell, WizardTitle } from '../components/WizardShell'
 import { UploadCloud, PlusIcon } from '../components/icons2'
-import { createShow, createCharacter, uploadCharacterReference } from '../data/api'
+import {
+  createShow,
+  createCharacter,
+  uploadCharacterReference,
+  generateCharacterReference,
+  generateShowPoster,
+} from '../data/api'
 
 export function CreateShowCharactersScreen() {
   const location = useLocation()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
+  const [progress, setProgress] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   // Reference image files selected per character index (uploaded after the character is created)
   const [refFiles, setRefFiles] = useState<Record<number, File[]>>({})
@@ -48,29 +55,50 @@ export function CreateShowCharactersScreen() {
     setLoading(true)
     setError(null)
     try {
-      // 1. Create Show
+      // 1. Create the show record
+      setProgress('Creating show…')
       const show = await createShow(proposal)
 
-      // 2. Create characters, then upload any selected reference images
+      // 2. Create characters; generate references with wan2.7 unless the user uploaded their own
       for (let i = 0; i < proposal.characters.length; i++) {
         const char = proposal.characters[i]
         if (!char.name) continue
         const created = await createCharacter(show.id, char)
-        for (const file of refFiles[i] || []) {
+        const uploads = refFiles[i] || []
+        if (uploads.length > 0) {
+          setProgress(`Uploading references for ${char.name}…`)
+          for (const file of uploads) {
+            try {
+              await uploadCharacterReference(created.id, file)
+            } catch (e) {
+              console.error('reference upload failed', e)
+            }
+          }
+        } else {
+          setProgress(`wan2.7 is drawing ${char.name}…`)
           try {
-            await uploadCharacterReference(created.id, file)
+            await generateCharacterReference(created.id)
           } catch (e) {
-            console.error('reference upload failed', e)
+            console.error('reference generation failed', e)
           }
         }
       }
 
-      // 3. Navigate to show overview
+      // 3. Generate the show poster with qwen-image (best-effort; show works without it)
+      setProgress('qwen-image is painting your show poster…')
+      try {
+        await generateShowPoster(show.id)
+      } catch (e) {
+        console.error('poster generation failed', e)
+      }
+
+      // 4. Navigate to show overview
       navigate(`/show/${show.id}`)
     } catch (err) {
       console.error(err)
       setError(err instanceof Error ? err.message : 'Failed to create show. Please try again.')
       setLoading(false)
+      setProgress(null)
     }
   }
 
@@ -89,12 +117,13 @@ export function CreateShowCharactersScreen() {
       footerRight={
         <div className="flex items-center gap-4">
           {error && <p className="text-[13.5px] text-red-400">{error}</p>}
+          {loading && progress && <p className="text-[13.5px] text-accent">{progress}</p>}
           <button
             onClick={handleCreateShow}
             disabled={loading || proposal.characters.length === 0}
             className="flex items-center gap-2.5 rounded-lg bg-ink px-6 py-3 text-[15px] font-medium text-app transition-colors hover:bg-ink-2 disabled:opacity-50"
           >
-            {loading ? 'Creating...' : 'Create show'}
+            {loading ? 'Creating…' : 'Create show'}
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
               <path d="M4 10h12M11 4.5L16.5 10 11 15.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -104,7 +133,7 @@ export function CreateShowCharactersScreen() {
     >
       <WizardTitle
         title="Introduce your main characters"
-        subtitle="Strong references help Cre8Motion preserve identity across scenes and episodes."
+        subtitle="cre8motion will generate reference art for each character with wan2.7 — or upload your own to lock a specific look."
       />
       <div className="mx-auto max-w-[1080px] px-6">
 
@@ -141,11 +170,11 @@ export function CreateShowCharactersScreen() {
                   className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong py-9 transition-colors hover:border-accent-border"
                 >
                   <UploadCloud className="text-ink-2" />
-                  <p className="text-[15px] font-medium">Upload references</p>
+                  <p className="text-[15px] font-medium">Upload references (optional)</p>
                   <p className="text-[13.5px] text-ink-2">
                     Drag images here or <span className="text-accent">choose files</span>
                   </p>
-                  <p className="text-[12.5px] text-ink-3">JPG or PNG</p>
+                  <p className="text-[12.5px] text-ink-3">Leave empty and wan2.7 will generate this character</p>
                 </button>
                 {(refFiles[idx]?.length ?? 0) > 0 && (
                   <div className="mt-4 flex gap-3">

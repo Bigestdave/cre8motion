@@ -26,3 +26,11 @@ export function pushRecentShow(show: RecentShow) {
     /* storage unavailable */
   }
 }
+
+export function setRecentShows(list: RecentShow[]) {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(list.slice(0, MAX)))
+  } catch {
+    /* storage unavailable */
+  }
+}

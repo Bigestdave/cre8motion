@@ -65,6 +65,51 @@ def show_to_dict(show, db: Session = None):
 def generate_proposal(genre: str, animation_style: str, tone: str, target_audience: str, default_duration_seconds: int = 45, idea_seed: str = None):
     return reasoning.generate_show_proposal(genre, animation_style, tone, target_audience, default_duration_seconds, idea_seed)
 
+
+# Curated idea bank distilled from the Cre8Motion story guide — used as few-shot
+# examples so qwen-max generates ideas with a visible objective and a visual engine.
+IDEA_BANK = [
+    "A curious child spends evenings with a quiet grandparent, uncovering what really happened to the old house through objects: a music box, a torn photograph, a moon necklace",
+    "A broke delivery rider finds a wallet that produces money for selfish acts and empties when they help someone - every episode is one delivery and one visible moral choice",
+    "A ruthless billionaire is magically turned into a baby; their exhausted assistant must secretly run the empire while protecting them",
+    "A tiny doctor treats patients whose emotions appear as physical creatures: heartbreak is a cracked glowing heart, anxiety a shadow monster",
+    "A clueless courier must deliver a diamond while thieves repeatedly try to swap the package - and accidentally defeats them without noticing",
+    "A mysterious shopkeeper buys and sells time: sell a year of life for money, buy five minutes to prevent an accident, steal someone's happiest day",
+    "Poor kitchen workers secretly divert food from a selfish king to a hungry village while pretending to cook increasingly ridiculous royal meals",
+    "A terrifying debt collector secretly helps each struggling person while pretending to seize their belongings so their cruel employer won't notice",
+]
+
+
+@router.post("/idea")
+def generate_idea(genre: str = "Any", tone: str = "Any", db: Session = Depends(get_db)):
+    """Generate one fresh silent-story idea seed with qwen-max, few-shot primed with the idea bank."""
+    import json as _json
+    import random
+    examples = "\n".join(f"- {i}" for i in random.sample(IDEA_BANK, 4))
+    prompt = f"""You are the Episode Ideator for a dialogue-free 45-second vertical animation studio.
+Generate ONE new show idea seed (1-2 sentences) for genre "{genre}" and tone "{tone}".
+Rules: it must have a VISIBLE physical objective or object at its heart, a clear visual engine
+that can repeat every episode, and be understandable with no dialogue. Do not reuse the examples.
+
+Examples of the right shape:
+{examples}
+
+Return JSON: {{"idea": "<the idea seed>"}}"""
+    try:
+        response = reasoning.client.chat.completions.create(
+            model=reasoning.model,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+        )
+        data = _json.loads(response.choices[0].message.content)
+        if isinstance(data.get("idea"), str) and data["idea"].strip():
+            return {"idea": data["idea"].strip(), "source": "qwen-max"}
+    except Exception as e:
+        print(f"Error in generate_idea: {e}")
+    # Offline fallback: serve from the curated bank
+    import random as _r
+    return {"idea": _r.choice(IDEA_BANK), "source": "idea-bank"}
+
 @router.post("/")
 def create_show(payload: ShowCreateRequest, db: Session = Depends(get_db)):
     workspace = db.query(Workspace).first()

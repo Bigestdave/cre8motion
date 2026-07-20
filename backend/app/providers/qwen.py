@@ -764,6 +764,33 @@ class QwenImageProvider(ImageProvider):
         self.api_key = settings.QWEN_API_KEY
         self.base_url = "https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis"
 
+    def generate_image(self, prompt: str, negative_prompt: str = None, size: str = "1024*1024", model: str = "qwen-image-2.0") -> dict:
+        """Generic async image generation used for posters and character references."""
+        print(f"Generating image using {model} at {size}")
+        if settings.DEMO_MODE or not self.api_key:
+            return {"task_id": "mock_task", "status": "FAILED"}
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "X-DashScope-Async": "enable",
+            "Content-Type": "application/json"
+        }
+        input_data = {"prompt": prompt}
+        if negative_prompt:
+            input_data["negative_prompt"] = negative_prompt
+        data = {
+            "model": model,
+            "input": input_data,
+            "parameters": {"size": size, "n": 1}
+        }
+        try:
+            resp = httpx.post(self.base_url, headers=headers, json=data, timeout=30)
+            resp.raise_for_status()
+            res_json = resp.json()
+            return {"task_id": res_json["output"]["task_id"], "status": "PENDING"}
+        except Exception as e:
+            print(f"Error in generate_image: {e}")
+            return {"task_id": "mock_task", "status": "FAILED"}
+
     def generate_storyboard(self, prompt: str, negative_prompt: str = None) -> dict:
         print(f"Generating storyboard using qwen-image-2.0")
         if settings.DEMO_MODE or not self.api_key:

@@ -155,6 +155,27 @@ export async function generateShowProposal(params: {
   return fetchJson(`/shows/proposal?${query}`, { method: 'POST' })
 }
 
+export const generateIdea = (genre: string, tone: string) =>
+  fetchJson<{ idea: string; source: string }>(
+    `/shows/idea?genre=${encodeURIComponent(genre)}&tone=${encodeURIComponent(tone)}`,
+    { method: 'POST' },
+  )
+
+export const generateShowPoster = (showId: string) =>
+  fetchJson<{ artifact_id: string; download_url: string }>(
+    `/shows/${encodeURIComponent(showId)}/poster/generate`,
+    { method: 'POST' },
+  )
+
+export const getShowPoster = (showId: string) =>
+  fetchJson<{ artifact_id: string; download_url: string }>(`/shows/${encodeURIComponent(showId)}/poster`)
+
+export const generateCharacterReference = (characterId: string) =>
+  fetchJson<{ reference_id: string; artifact_id: string; download_url: string }>(
+    `/characters/${encodeURIComponent(characterId)}/references/generate`,
+    { method: 'POST' },
+  )
+
 export function createShow(data: {
   title: string
   premise?: string

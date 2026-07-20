@@ -1,11 +1,12 @@
-import { useState, type ReactNode } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import { NavLink, Link } from 'react-router-dom'
 import { PlusIcon, GridIcon, FilmIcon, FolderIcon, UsageIcon, GearIcon, BellIcon } from './icons2'
 import { ArrowLeft, ChevronDown } from './icons'
 import { Thumb } from './ShotStrip'
 import logoUrl from '../assets/logo.png'
-import { getRecentShows } from '../data/recents'
-import { getRecentEvents, type WorkflowEventItem } from '../data/api'
+import { getRecentShows, setRecentShows } from '../data/recents'
+import { getRecentEvents, getShows, type WorkflowEventItem } from '../data/api'
+import { showPoster } from '../data/artwork'
 
 function prettyEventType(t?: string): string {
   if (!t) return 'Event'
@@ -43,7 +44,22 @@ export function WorkspaceShell({ children, breadcrumb, backTo = '/shows' }: Work
   const [showNotifications, setShowNotifications] = useState(false)
   const [events, setEvents] = useState<WorkflowEventItem[]>([])
   const [eventsLoading, setEventsLoading] = useState(false)
-  const recents = getRecentShows()
+  const [userName, setUserName] = useState(() => localStorage.getItem('cre8motion.userName') || 'Creator')
+  const [recents, setRecents] = useState(getRecentShows())
+
+  // Validate recents against the live backend: drop shows that no longer exist.
+  useEffect(() => {
+    getShows()
+      .then((shows) => {
+        const liveIds = new Set(shows.map((s) => s.id))
+        const valid = getRecentShows().filter((r) => liveIds.has(r.id))
+        setRecentShows(valid)
+        setRecents(valid)
+      })
+      .catch(() => {
+        /* offline — keep local list */
+      })
+  }, [])
 
   return (
     <div className="flex h-screen overflow-hidden bg-app">
@@ -93,7 +109,11 @@ export function WorkspaceShell({ children, breadcrumb, backTo = '/shows' }: Work
                   to={`/show/${r.id}`}
                   className="flex items-center gap-3 rounded-lg px-3 py-2 text-[14.5px] text-ink-2 transition-colors hover:bg-raised hover:text-ink"
                 >
-                  <Thumb shotId={RECENT_THUMBS[i % RECENT_THUMBS.length]} className="h-7 w-7 shrink-0 rounded-md" />
+                  {showPoster(r.title) ? (
+                    <img src={showPoster(r.title)} alt="" className="h-7 w-7 shrink-0 rounded-md object-cover" />
+                  ) : (
+                    <Thumb shotId={RECENT_THUMBS[i % RECENT_THUMBS.length]} className="h-7 w-7 shrink-0 rounded-md" />
+                  )}
                   <span className="min-w-0 flex-1 truncate">{r.title}</span>
                   {i === 0 && <span className="h-2 w-2 shrink-0 rounded-full bg-accent" />}
                 </Link>
@@ -125,14 +145,23 @@ export function WorkspaceShell({ children, breadcrumb, backTo = '/shows' }: Work
             <GearIcon size={17} />
             Settings
           </NavLink>
-          <button className="mt-1 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[14.5px] transition-colors hover:bg-raised">
+          <button
+            onClick={() => {
+              const next = window.prompt('What name should we show for your studio?', userName)
+              if (next && next.trim()) {
+                localStorage.setItem('cre8motion.userName', next.trim())
+                setUserName(next.trim())
+              }
+            }}
+            className="mt-1 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[14.5px] transition-colors hover:bg-raised"
+          >
             <span
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold text-accent-ink"
               style={{ background: 'linear-gradient(135deg, #9DFF00, #5a9400)' }}
             >
-              D
+              {userName.charAt(0).toUpperCase()}
             </span>
-            <span className="flex-1 text-left">Dave</span>
+            <span className="flex-1 truncate text-left">{userName}</span>
             <ChevronDown size={14} className="text-ink-3" />
           </button>
         </div>
