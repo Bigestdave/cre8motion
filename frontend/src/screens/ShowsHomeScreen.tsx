@@ -5,6 +5,7 @@ import { Thumb } from '../components/ShotStrip'
 import { Ellipsis, CheckCircle } from '../components/icons'
 import { PlusIcon, SearchIcon } from '../components/icons2'
 import { getShows, type Show } from '../data/api'
+import { showPoster, showBanner } from '../data/artwork'
 import { SkeletonShowCard, SkeletonHero } from '../components/Skeleton'
 
 const filters = ['All', 'In production', 'Complete'] as const
@@ -111,7 +112,11 @@ export function ShowsHomeScreen() {
               CONTINUE PRODUCTION
             </p>
             <div className="grid grid-cols-[1fr_380px] overflow-hidden rounded-xl border border-line-soft bg-surface">
-              <Thumb shotId="S06" className="h-[248px] w-full rounded-none" />
+              {showBanner(heroShow.title) ? (
+                <img src={showBanner(heroShow.title)} alt={heroShow.title} className="h-[248px] w-full object-cover" />
+              ) : (
+                <Thumb shotId="S06" className="h-[248px] w-full rounded-none" />
+              )}
               <div className="flex flex-col justify-center px-8 py-6">
                 <p className="text-[22px] font-semibold tracking-tight">{heroShow.title}</p>
                 <p className="pt-1 text-[14.5px] text-ink-2">
@@ -170,10 +175,14 @@ export function ShowsHomeScreen() {
                   className="group overflow-hidden rounded-xl border border-line-soft bg-surface transition-colors hover:border-line"
                 >
                   <div className="relative">
-                    <Thumb
-                      shotId={heroThumbs[index % heroThumbs.length]}
-                      className="aspect-[16/10] w-full rounded-none"
-                    />
+                    {showPoster(s.title) ? (
+                      <img src={showPoster(s.title)} alt={s.title} className="aspect-[16/10] w-full object-cover" />
+                    ) : (
+                      <Thumb
+                        shotId={heroThumbs[index % heroThumbs.length]}
+                        className="aspect-[16/10] w-full rounded-none"
+                      />
+                    )}
                     <button
                       className="absolute right-3 top-3 rounded-md bg-app/60 p-1.5 text-ink-2 opacity-0 backdrop-blur transition-opacity hover:text-ink group-hover:opacity-100"
                       aria-label="More"

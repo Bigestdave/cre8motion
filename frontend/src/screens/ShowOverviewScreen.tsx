@@ -13,6 +13,7 @@ import {
   type CharacterSummary,
 } from '../data/api'
 import { pushRecentShow } from '../data/recents'
+import { showPoster } from '../data/artwork'
 import { SkeletonShowHeader, SkeletonEpisodeRow } from '../components/Skeleton'
 
 const tabs = ['Episodes', 'Characters'] as const
@@ -116,7 +117,11 @@ export function ShowOverviewScreen() {
       <div className="mx-auto max-w-[1280px] px-8 pb-12">
         {/* Header */}
         <div className="flex items-start gap-6">
-          <Thumb shotId="S02" className="h-[150px] w-[210px] shrink-0 rounded-xl" />
+          {showPoster(show.title) ? (
+            <img src={showPoster(show.title)} alt={show.title} className="h-[150px] w-[210px] shrink-0 rounded-xl object-cover" />
+          ) : (
+            <Thumb shotId="S02" className="h-[150px] w-[210px] shrink-0 rounded-xl" />
+          )}
           <div className="flex-1 pt-2">
             <h1 className="text-[30px] font-semibold tracking-tight">{show.title}</h1>
             <p className="pt-1.5 text-[15px] text-ink-2">{show.premise || 'No premise yet.'}</p>
