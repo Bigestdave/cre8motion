@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
 from app.models.episode import Episode
-from app.models.show import Show, Workspace, StyleProfile, Character
+from app.models.show import Show, Workspace, StyleProfile, Character, CharacterReference, Location, Prop
 from app.providers.qwen import QwenReasoningProvider
 from app.schemas.api import CharacterCreateRequest, ShowCreateRequest
 
@@ -118,9 +118,19 @@ def delete_show(show_id: str, db: Session = Depends(get_db)):
     show = db.query(Show).filter(Show.id == show_id).first()
     if not show:
         raise HTTPException(404, "Show not found")
-    db.query(Episode).filter(Episode.show_id == show_id).delete()
-    db.query(Character).filter(Character.show_id == show_id).delete()
-    db.query(StyleProfile).filter(StyleProfile.show_id == show_id).delete()
+    char_ids = [c.id for c in db.query(Character).filter(Character.show_id == show_id).all()]
+    if char_ids:
+        db.query(CharacterReference).filter(CharacterReference.character_id.in_(char_ids)).delete(synchronize_session=False)
+        db.query(Prop).filter(Prop.current_owner_character_id.in_(char_ids)).update(
+            {Prop.current_owner_character_id: None}, synchronize_session=False
+        )
+    db.query(Prop).filter(Prop.show_id == show_id).delete(synchronize_session=False)
+    db.query(Location).filter(Location.show_id == show_id).delete(synchronize_session=False)
+    db.query(Episode).filter(Episode.show_id == show_id).delete(synchronize_session=False)
+    db.query(Character).filter(Character.show_id == show_id).delete(synchronize_session=False)
+    show.default_style_profile_id = None
+    db.flush()
+    db.query(StyleProfile).filter(StyleProfile.show_id == show_id).delete(synchronize_session=False)
     db.delete(show)
     db.commit()
     return {"deleted": show_id}
