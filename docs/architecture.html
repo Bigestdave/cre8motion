@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; background: #0a0a0a; font-family: 'Segoe UI', Arial, sans-serif; width: 1600px; }
+  .wrap { padding: 48px 56px; }
+  h1 { color: #fff; font-size: 34px; margin: 0 0 6px; }
+  h1 .accent { color: #9DFF00; }
+  .sub { color: #9a9a9a; font-size: 17px; margin-bottom: 36px; }
+  .row { display: flex; gap: 28px; align-items: stretch; }
+  .col { display: flex; flex-direction: column; gap: 18px; flex: 1; }
+  .box { border: 1.5px solid #333; border-radius: 14px; padding: 20px 22px; background: #121212; }
+  .box h2 { color: #fff; font-size: 19px; margin: 0 0 4px; display: flex; align-items: center; gap: 10px; }
+  .box .tag { font-size: 12px; color: #9DFF00; border: 1px solid #3a4d00; border-radius: 6px; padding: 2px 8px; background: #1a2400; }
+  .box p { color: #b5b5b5; font-size: 14px; margin: 8px 0 0; line-height: 1.55; }
+  .qwen { border-color: #6551DE; background: #14112b; }
+  .qwen h2 { color: #c4c4ff; }
+  .qwen .tag { color: #c4c4ff; border-color: #6551DE; background: #1d1840; }
+  .models { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+  .model { border: 1px solid #3d340; border: 1px solid #453a8f; border-radius: 10px; padding: 12px 14px; background: #1a1533; }
+  .model b { color: #fff; font-size: 14px; display:block; }
+  .model span { color: #a9a3d9; font-size: 12.5px; line-height: 1.45; display: block; margin-top: 3px; }
+  .arrowrow { display: flex; align-items: center; justify-content: center; padding: 4px 0; }
+  .arrow { color: #9DFF00; font-size: 15px; letter-spacing: 1px; text-align: center; }
+  .flow { color: #777; font-size: 13px; text-align: center; margin-top: 2px; }
+  .pipeline { border-color: #2c2c2c; background: #101510; border-color: #2f4d00; }
+  .stages { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+  .stage { font-size: 11.5px; color: #cfe89e; background: #1c2900; border: 1px solid #37510a; padding: 4px 9px; border-radius: 999px; }
+  .stage.qc { color: #ffd9a3; background: #2b1e00; border-color: #5c4300; }
+  .legend { margin-top: 26px; color: #8a8a8a; font-size: 13px; display: flex; gap: 26px; }
+  .legend span::before { content: "●"; margin-right: 7px; }
+  .l1::before { color: #9DFF00; }
+  .l2::before { color: #6551DE; }
+  .l3::before { color: #ffb648; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Cre<span class="accent">8</span>Motion — System Architecture</h1>
+  <div class="sub">A continuity-aware AI showrunner: every creative decision runs on Qwen Cloud, orchestrated by a 17-stage production state machine.</div>
+
+  <div class="row">
+    <!-- Left column: client + edge -->
+    <div class="col" style="max-width:340px">
+      <div class="box">
+        <h2>🖥️ Frontend <span class="tag">Vercel</span></h2>
+        <p>React + Vite + TypeScript studio.<br>Shows · Episodes · Characters · Productions · Assets. SSE live pipeline events.</p>
+      </div>
+      <div class="arrowrow"><div>
+        <div class="arrow">⇅ &nbsp;/api/* proxy rewrite</div>
+        <div class="flow">HTTPS · no CORS exposure</div>
+      </div></div>
+      <div class="box">
+        <h2>⚙️ Backend API <span class="tag">FastAPI · Docker · Render</span></h2>
+        <p>REST + Server-Sent Events.<br>Show bible, episode, character &amp; artifact management. Budget ledger and workflow event log.</p>
+      </div>
+      <div class="arrowrow"><div>
+        <div class="arrow">⇅ SQLAlchemy + Alembic</div>
+      </div></div>
+      <div class="box">
+        <h2>🗄️ PostgreSQL <span class="tag">narrative memory</span></h2>
+        <p>Shows · episodes · characters · continuity versions · production runs · shots · quality reports · budget ledger · generated artwork (in-DB bytes survive redeploys).</p>
+      </div>
+    </div>
+
+    <!-- Middle column: orchestrator -->
+    <div class="col" style="max-width:430px">
+      <div class="box pipeline" style="flex:1">
+        <h2>🎬 Production Orchestrator <span class="tag">17-stage state machine</span></h2>
+        <p>Autonomous pipeline from idea to episode. Validated transitions, budget-aware debits per stage, selective single-shot regeneration on QC failure, pause/resume human checkpoints.</p>
+        <div class="stages">
+          <span class="stage">NORMALIZING_INPUT</span>
+          <span class="stage">PLANNING</span>
+          <span class="stage">PLAN_VALIDATION</span>
+          <span class="stage">REFERENCE_RESOLUTION</span>
+          <span class="stage">SHOT_PLANNING</span>
+          <span class="stage">STORYBOARD_GENERATION</span>
+          <span class="stage qc">STORYBOARD_QC</span>
+          <span class="stage">KEYFRAME_GENERATION</span>
+          <span class="stage qc">KEYFRAME_QC</span>
+          <span class="stage">VIDEO_GENERATION</span>
+          <span class="stage qc">VIDEO_QC</span>
+          <span class="stage">AUDIO_GENERATION</span>
+          <span class="stage">ASSEMBLY (ffmpeg)</span>
+          <span class="stage qc">FINAL_QC</span>
+          <span class="stage">READY_FOR_REVIEW</span>
+        </div>
+        <p style="margin-top:14px">Silent-story rules enforced at every creative stage: visible objective in 8s · flaw-driven complications · object → eyeline → reaction → action · setup before payoff · must work muted.</p>
+      </div>
+    </div>
+
+    <!-- Right column: Qwen Cloud -->
+    <div class="col" style="max-width:480px">
+      <div class="box qwen" style="flex:1">
+        <h2>🧠 Qwen Cloud <span class="tag">DashScope API · dashscope-intl.aliyuncs.com</span></h2>
+        <p>Every creative and evaluative decision is a Qwen Cloud model call.</p>
+        <div class="models">
+          <div class="model"><b>qwen-max</b><span>Show bible · episode scripts · beat sheets · shot lists · idea generation · failure diagnosis &amp; prompt repair</span></div>
+          <div class="model"><b>qwen3-vl-plus</b><span>Visual QC: reviews storyboards, keyframes and video frames against shot specs &amp; continuity locks</span></div>
+          <div class="model"><b>qwen-image-plus</b><span>Show poster key art, generated at show creation</span></div>
+          <div class="model"><b>wan2.2 / wan2.5</b><span>Character reference sheets · storyboards · keyframes (vertical 9:16)</span></div>
+          <div class="model" style="grid-column: span 2;"><b>HappyHorse 1.1 (t2v / i2v)</b><span>Shot video generation — animates each approved keyframe; keyframes fetched from the backend via public artifact URLs</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span class="l1">Application infrastructure (Vercel · Render · PostgreSQL)</span>
+    <span class="l2">Qwen Cloud models (all AI compute)</span>
+    <span class="l3">Adversarial QC gates with selective regeneration</span>
+  </div>
+</div>
+</body>
+</html>
