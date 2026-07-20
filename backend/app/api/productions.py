@@ -78,7 +78,26 @@ def get_production(production_id: str, db: Session = Depends(get_db)):
     run = db.query(ProductionRun).filter(ProductionRun.id == production_id).first()
     if not run:
         raise HTTPException(status_code=404, detail="Production not found")
-    return run
+    episode = db.query(Episode).filter(Episode.id == run.episode_id).first()
+    show = db.query(Show).filter(Show.id == episode.show_id).first() if episode else None
+    return {
+        "id": run.id,
+        "episode_id": run.episode_id,
+        "version": run.version,
+        "status": run.status,
+        "current_stage": run.current_stage,
+        "budget_limit": run.budget_limit,
+        "budget_used": run.budget_used,
+        "retry_reserve": run.retry_reserve,
+        "started_at": str(run.started_at) if run.started_at else None,
+        "completed_at": str(run.completed_at) if run.completed_at else None,
+        "failure_reason": run.failure_reason,
+        "episode_number": episode.episode_number if episode else None,
+        "episode_title": episode.title if episode else None,
+        "target_duration_seconds": episode.target_duration_seconds if episode else None,
+        "show_id": show.id if show else None,
+        "show_title": show.title if show else None,
+    }
 
 @router.post("/{production_id}/pause")
 def pause_production(production_id: str, db: Session = Depends(get_db)):

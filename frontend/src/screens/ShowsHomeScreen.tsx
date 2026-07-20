@@ -4,7 +4,7 @@ import { WorkspaceShell } from '../components/WorkspaceShell'
 import { Thumb } from '../components/ShotStrip'
 import { Ellipsis, CheckCircle } from '../components/icons'
 import { PlusIcon, SearchIcon } from '../components/icons2'
-import { getShows, listProductions, type Show, type ProductionListItem } from '../data/api'
+import { getShows, deleteShow, listProductions, type Show, type ProductionListItem } from '../data/api'
 import { showBanner, usePoster } from '../data/artwork'
 import { stageProgress, stageScreen, prettyStage } from '../data/pipeline'
 import { SkeletonShowCard, SkeletonHero } from '../components/Skeleton'
@@ -53,6 +53,30 @@ export function ShowsHomeScreen() {
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [menuFor, setMenuFor] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
+
+  // Close the card menu when clicking anywhere outside it
+  useEffect(() => {
+    if (!menuFor) return
+    const close = () => setMenuFor(null)
+    document.addEventListener('click', close)
+    return () => document.removeEventListener('click', close)
+  }, [menuFor])
+
+  const handleDeleteShow = async (id: string, title: string) => {
+    if (!window.confirm(`Delete "${title}" and all its episodes? This cannot be undone.`)) return
+    setDeleting(id)
+    try {
+      await deleteShow(id)
+      setShows((prev) => prev.filter((s) => s.id !== id))
+    } catch (err) {
+      console.error(err)
+      alert('Could not delete the show. Please try again.')
+    } finally {
+      setDeleting(null)
+      setMenuFor(null)
+    }
+  }
 
   useEffect(() => {
     Promise.all([getShows(), listProductions().catch(() => [] as ProductionListItem[])])
@@ -238,6 +262,16 @@ export function ShowsHomeScreen() {
                           }}
                         >
                           Copy link
+                        </button>
+                        <button
+                          className="block w-full px-4 py-2 text-left text-[13.5px] text-red-400 transition-colors hover:bg-raised"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            handleDeleteShow(s.id, s.title)
+                          }}
+                        >
+                          {deleting === s.id ? 'Deleting…' : 'Delete show'}
                         </button>
                       </div>
                     )}

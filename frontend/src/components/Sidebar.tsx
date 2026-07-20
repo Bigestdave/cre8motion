@@ -45,7 +45,7 @@ function StepIcon({ state }: { state: StepState }) {
 
 export function Sidebar({ active, overrides, badges }: SidebarProps) {
   const [searchParams] = useSearchParams()
-  const productionId = searchParams.get('productionId') || searchParams.get('showId')
+  const productionId = searchParams.get('productionId')
   const queryStr = productionId ? `?productionId=${productionId}` : ''
 
   return (

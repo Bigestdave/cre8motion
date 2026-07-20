@@ -143,6 +143,8 @@ export function getArtifactDownloadUrl(artifactId?: string | null) {
 // Shows
 export const getShows = () => fetchJson<Show[]>('/shows/')
 export const getShow = (showId: string) => fetchJson<Show>(`/shows/${encodeURIComponent(showId)}`)
+export const deleteShow = (showId: string) =>
+  fetchJson<{ deleted: string }>(`/shows/${encodeURIComponent(showId)}`, { method: 'DELETE' })
 
 export async function generateShowProposal(params: {
   genre: string
@@ -257,7 +259,18 @@ export function createEpisode(showId: string, data: EpisodeDraft & { duration_se
 }
 
 // Productions
+export interface ProductionDetail extends ProductionListItem {
+  retry_reserve?: number
+  target_duration_seconds?: number | null
+}
+
 export const listProductions = () => fetchJson<ProductionListItem[]>('/productions/')
+export const getProductionDetail = (productionId: string) =>
+  fetchJson<ProductionDetail>(`/productions/${encodeURIComponent(productionId)}`)
+export const pauseProduction = (productionId: string) =>
+  fetchJson<{ message: string }>(`/productions/${encodeURIComponent(productionId)}/pause`, { method: 'POST' })
+export const resumeProduction = (productionId: string) =>
+  fetchJson<{ message: string }>(`/productions/${encodeURIComponent(productionId)}/resume`, { method: 'POST' })
 export const startProduction = (episodeId: string) =>
   fetchJson<ProductionStartResponse>(`/productions/${encodeURIComponent(episodeId)}`, { method: 'POST' })
 

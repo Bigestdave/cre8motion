@@ -89,7 +89,11 @@ export function PlanScreen() {
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-[32px] font-bold tracking-tight">Production plan</h1>
-            <p className="pt-2 text-[15px] text-ink-2">Eight shots prepared for a {totalSec}-second episode.</p>
+            <p className="pt-2 text-[15px] text-ink-2">
+              {shots.length > 0
+                ? `${shots.length} shots prepared for a ${Math.round(totalSec)}-second episode.`
+                : 'The showrunner is planning shots — they will appear here as the pipeline works.'}
+            </p>
           </div>
           <p className="pt-3 text-[15px] text-ink-2">
             <span className="font-medium text-ink">{totalSec} sec total</span>
