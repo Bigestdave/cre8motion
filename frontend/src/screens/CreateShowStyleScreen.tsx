@@ -1,21 +1,24 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { WizardShell, WizardTitle, Field, TextInput, TextArea } from '../components/WizardShell'
-import { Thumb } from '../components/ShotStrip'
+import imgStyle3d from '../assets/style-polished-3d.png'
+import imgStyleStorybook from '../assets/style-storybook.png'
 
 const styles = [
   {
     id: '3d',
     title: 'Polished 3D',
     lines: ['Soft cinematic lighting', 'Expressive characters'],
-    thumbId: 'S06',
+    image: imgStyle3d,
+    imageAlt: 'Three cinematic 3D characters in a moody library',
     recommended: true,
   },
   {
     id: 'storybook',
     title: 'Illustrated Storybook',
     lines: ['Textured, expressive', 'hand-crafted feeling'],
-    thumbId: 'S01',
+    image: imgStyleStorybook,
+    imageAlt: 'Painterly illustration of a girl in a red hood meeting a fox',
     recommended: false,
   },
 ]
@@ -134,7 +137,7 @@ export function CreateShowStyleScreen() {
                     Recommended
                   </span>
                 )}
-                <Thumb shotId={s.thumbId} className="aspect-video w-full rounded-none" />
+                <img src={s.image} alt={s.imageAlt} className="aspect-video w-full object-cover" />
                 <div className="flex items-start justify-between p-5">
                   <div>
                     <p className="text-[17px] font-semibold">{s.title}</p>
