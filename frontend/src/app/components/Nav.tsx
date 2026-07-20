@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { CTAButton } from "./primitives/CTAButton";
+import logoUrl from "../../assets/logo.png";
 
 const LINKS = ["Product", "How it works", "Examples", "Technology"];
 
@@ -27,8 +28,9 @@ export function Nav() {
       }`}
     >
       <div className="mx-auto flex h-16 w-full max-w-[1280px] items-center justify-between px-6 md:px-10">
-        <a href="#" className="text-[1.05rem] font-semibold tracking-[-0.02em] text-ink">
-          Cre<span className="text-accent">8</span>Motion
+        <a href="#" className="flex items-center gap-2.5 text-[1.05rem] font-semibold tracking-[-0.02em] text-ink">
+          <img src={logoUrl} alt="" className="h-7 w-7 rounded-md" />
+          <span>Cre<span className="text-accent">8</span>Motion</span>
         </a>
 
         <nav className="hidden items-center gap-8 md:flex">

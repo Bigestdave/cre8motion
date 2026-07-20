@@ -40,6 +40,15 @@ def show_to_dict(show, db: Session = None):
         )
         latest = episodes[-1] if episodes else None
         data["episode_count"] = len(episodes)
+        data["episodes"] = [
+            {
+                "id": ep.id,
+                "episode_number": ep.episode_number,
+                "title": ep.title,
+                "status": ep.status,
+            }
+            for ep in episodes
+        ]
         data["latest_episode"] = (
             {
                 "id": latest.id,
@@ -102,7 +111,7 @@ def get_show(show_id: str, db: Session = Depends(get_db)):
     show = db.query(Show).filter(Show.id == show_id).first()
     if not show:
         raise HTTPException(404, "Show not found")
-    return show_to_dict(show)
+    return show_to_dict(show, db)
 
 @router.post("/{show_id}/characters")
 def create_character_from_proposal(show_id: str, payload: CharacterCreateRequest, db: Session = Depends(get_db)):

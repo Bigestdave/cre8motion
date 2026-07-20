@@ -3,6 +3,7 @@ import { NavLink, Link } from 'react-router-dom'
 import { PlusIcon, GridIcon, FilmIcon, FolderIcon, UsageIcon, GearIcon, BellIcon } from './icons2'
 import { ArrowLeft, ChevronDown } from './icons'
 import { Thumb } from './ShotStrip'
+import logoUrl from '../assets/logo.png'
 
 const workspaceNav = [
   { label: 'Shows', icon: GridIcon, to: '/shows' },
@@ -30,8 +31,9 @@ export function WorkspaceShell({ children, breadcrumb, backTo = '/shows' }: Work
     <div className="flex h-screen overflow-hidden bg-app">
       <aside className="flex w-[224px] shrink-0 flex-col border-r border-line-soft bg-sidebar">
         <div className="px-5 pt-6 pb-5">
-          <Link to="/shows" className="text-[20px] font-semibold tracking-tight">
-            Cre<span className="text-accent">8</span>Motion
+          <Link to="/shows" className="flex items-center gap-2.5 text-[20px] font-semibold tracking-tight">
+            <img src={logoUrl} alt="" className="h-7 w-7 rounded-md" />
+            <span>Cre<span className="text-accent">8</span>Motion</span>
           </Link>
         </div>
 

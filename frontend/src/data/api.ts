@@ -32,6 +32,7 @@ export interface Show {
   default_style_profile_id?: string | null
   current_continuity_version: number
   episode_count?: number
+  episodes?: ShowEpisodeSummary[]
   latest_episode?: ShowEpisodeSummary | null
 }
 
@@ -156,6 +157,26 @@ export function createShow(data: {
 }
 
 // Characters
+export interface CharacterSummary {
+  id: string
+  name: string
+  canonical_description?: string | null
+}
+
+export interface CharacterReference {
+  id: string
+  character_id: string
+  reference_type: string
+  artifact_id: string
+  is_canonical: boolean
+}
+
+export const listCharacters = (showId: string) =>
+  fetchJson<CharacterSummary[]>(`/shows/${encodeURIComponent(showId)}/characters`)
+
+export const listCharacterReferences = (characterId: string) =>
+  fetchJson<CharacterReference[]>(`/characters/${encodeURIComponent(characterId)}/references`)
+
 export function createCharacter(showId: string, data: { name: string; canonical_description?: string }) {
   return fetchJson<{ id: string; name: string; canonical_description?: string }>(`/shows/${encodeURIComponent(showId)}/characters`, {
     method: 'POST',
