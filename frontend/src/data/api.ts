@@ -39,7 +39,8 @@ export interface Show {
 export interface EpisodeDraft {
   title: string
   idea?: string
-  script?: string
+  /** qwen-max may return the script as formatted text or a structured object */
+  script?: string | Record<string, unknown>
 }
 
 export interface Episode {
@@ -240,13 +241,16 @@ export async function generateEpisodeDraft(showId: string, ideaSeed: string) {
 }
 
 export function createEpisode(showId: string, data: EpisodeDraft & { duration_seconds?: number }) {
+  // qwen-max sometimes returns the script as a structured object — the episodes API stores a string.
+  const script =
+    typeof data.script === 'string' ? data.script : data.script ? JSON.stringify(data.script, null, 2) : undefined
   return fetchJson<Episode>('/episodes/', {
     method: 'POST',
     body: JSON.stringify({
       show_id: showId,
       title: data.title || 'Untitled',
       idea: data.idea,
-      script: data.script,
+      script,
       duration_seconds: data.duration_seconds || 45,
     }),
   })

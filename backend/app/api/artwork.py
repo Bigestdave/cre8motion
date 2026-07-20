@@ -102,7 +102,7 @@ async def generate_show_poster(show_id: str, db: Session = Depends(get_db)):
     )
 
     url = await _run_image_task(
-        _poster_prompt(show, style), POSTER_NEGATIVE, size="1280*720", model="qwen-image-2.0"
+        _poster_prompt(show, style), POSTER_NEGATIVE, size="1280*720", model="qwen-image-plus"
     )
     if not url:
         raise HTTPException(502, "Poster generation did not complete")
@@ -139,7 +139,7 @@ async def generate_character_reference(character_id: str, db: Session = Depends(
     )
 
     url = await _run_image_task(
-        _reference_prompt(character, style), POSTER_NEGATIVE, size="720*1280", model="wan2.7-image-pro"
+        _reference_prompt(character, style), POSTER_NEGATIVE, size="720*1280", model="wan2.2-t2i-flash"
     )
     if not url:
         raise HTTPException(502, "Reference generation did not complete")

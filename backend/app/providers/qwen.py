@@ -792,7 +792,7 @@ class QwenImageProvider(ImageProvider):
             return {"task_id": "mock_task", "status": "FAILED"}
 
     def generate_storyboard(self, prompt: str, negative_prompt: str = None) -> dict:
-        print(f"Generating storyboard using qwen-image-2.0")
+        print(f"Generating storyboard using wan2.2-t2i-flash")
         if settings.DEMO_MODE or not self.api_key:
             return {"task_id": "mock_task", "status": "FAILED"}
         headers = {
@@ -800,10 +800,13 @@ class QwenImageProvider(ImageProvider):
             "X-DashScope-Async": "enable",
             "Content-Type": "application/json"
         }
+        input_data = {"prompt": prompt}
+        if negative_prompt:
+            input_data["negative_prompt"] = negative_prompt
         data = {
-            "model": "qwen-image-2.0",
-            "input": {"prompt": prompt},
-            "parameters": {"size": "1024*1024", "n": 1}
+            "model": "wan2.2-t2i-flash",
+            "input": input_data,
+            "parameters": {"size": "720*1280", "n": 1}
         }
         try:
             resp = httpx.post(self.base_url, headers=headers, json=data)
@@ -815,7 +818,7 @@ class QwenImageProvider(ImageProvider):
             return {"task_id": "mock_task", "status": "FAILED"}
 
     def generate_keyframe(self, prompt: str, reference_images: list = None, negative_prompt: str = None) -> dict:
-        print(f"Generating keyframe using wan2.7-image-pro")
+        print(f"Generating keyframe using wan2.5-t2i-preview")
         if settings.DEMO_MODE or not self.api_key:
             return {"task_id": "mock_task", "status": "FAILED"}
         headers = {
@@ -823,10 +826,13 @@ class QwenImageProvider(ImageProvider):
             "X-DashScope-Async": "enable",
             "Content-Type": "application/json"
         }
+        input_data = {"prompt": prompt}
+        if negative_prompt:
+            input_data["negative_prompt"] = negative_prompt
         data = {
-            "model": "wan2.7-image-pro",
-            "input": {"prompt": prompt},
-            "parameters": {"size": "1024*1024", "n": 1}
+            "model": "wan2.5-t2i-preview",
+            "input": input_data,
+            "parameters": {"size": "720*1280", "n": 1}
         }
         try:
             resp = httpx.post(self.base_url, headers=headers, json=data)
