@@ -6,8 +6,8 @@ import { CTAButton } from "./primitives/CTAButton";
 import { FrameImage } from "./primitives/FrameImage";
 import { fadeUpSmall, fadeUp, stagger } from "../lib/motion";
 import { motion, useReducedMotion } from "motion/react";
-import filmStrip from "../../imports/ChatGptImageJul172026015637PmPng-1/600c309842e02bfdb92ab332e6d34c61afa23aee.png";
-import svgPaths from "../../imports/ChatGptImageJul172026015637PmPng-1/svg-u3nrh017qp";
+import filmStrip from "../../imports/cta-panels/600c309842e02bfdb92ab332e6d34c61afa23aee.png";
+import svgPaths from "../../imports/cta-panels/svg-u3nrh017qp";
 
 /** The real Qwen Cloud hackathon logo mark, reused from the imported design. */
 function QwenLogo({ className }: { className?: string }) {

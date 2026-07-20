@@ -1,8 +1,8 @@
 // Centralized imagery used throughout the Cre8Motion landing page.
 // The hero + shot stills are the real rendered character assets from the
 // imported Figma design; the rest stand in for additional scene references.
-import lumiHero from "../../imports/ChatGptImageJul172026015448PmPng/7bb472cd1b19edeb4265883537bc1ab7b5a19341.png";
-import shotPreview from "../../imports/ChatGptImageJul172026015448PmPng/a04c56745d71afe6accca0ebe3748824a6c25546.png";
+import lumiHero from "../../imports/brand-frames/7bb472cd1b19edeb4265883537bc1ab7b5a19341.png";
+import shotPreview from "../../imports/brand-frames/a04c56745d71afe6accca0ebe3748824a6c25546.png";
 
 export const IMAGES = {
   // Rendered character still (Lumi kneeling in the evening kitchen) — hero art.

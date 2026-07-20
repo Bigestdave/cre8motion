@@ -1,10 +1,10 @@
 import { Check, Play, ArrowRight } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { FrameImage } from "./primitives/FrameImage";
-import imgReference from "../../imports/ChatGptImageJul172026015456PmPng-1/765c725f543c202b42b79dd7e546ea6c5c79541f.png";
-import imgStoryboard from "../../imports/ChatGptImageJul172026015456PmPng-1/52d12d5276d3b42869270065920ed6d100eb781e.png";
-import imgKeyframe from "../../imports/ChatGptImageJul172026015456PmPng-1/d2972aef9e189d2b6eed389b05c8a4767bcbcf08.png";
-import imgAnimation from "../../imports/ChatGptImageJul172026015456PmPng-1/d84dbd9288924262c0f45e150a16028cf74e02e7.png";
+import imgReference from "../../imports/pipeline-stages/765c725f543c202b42b79dd7e546ea6c5c79541f.png";
+import imgStoryboard from "../../imports/pipeline-stages/52d12d5276d3b42869270065920ed6d100eb781e.png";
+import imgKeyframe from "../../imports/pipeline-stages/d2972aef9e189d2b6eed389b05c8a4767bcbcf08.png";
+import imgAnimation from "../../imports/pipeline-stages/d84dbd9288924262c0f45e150a16028cf74e02e7.png";
 import imgLumiCharacter from "../../imports/image-4.png";
 
 type ProductionItem = { label: string; state: "done" | "active" | "todo" };

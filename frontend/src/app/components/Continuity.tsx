@@ -5,14 +5,14 @@ import { FrameImage } from "./primitives/FrameImage";
 import { fadeUpSmall } from "../lib/motion";
 
 // Real rendered assets from the Figma design import (read-only source of truth).
-import imgLumi from "../../imports/ChatGptImageJul172026015631PmPng-1/b15ee6515613c35b1310e6e61db298ac2d7fab0a.png";
-import imgKai from "../../imports/ChatGptImageJul172026015631PmPng-1/87ef40f063e838b69162d1aaf65960a953fb2681.png";
-import imgHouse from "../../imports/ChatGptImageJul172026015631PmPng-1/dcb9de54383238ece2f4d303da2ad45baf29ab23.png";
-import imgEpisode04 from "../../imports/ChatGptImageJul172026015631PmPng-1/00354e1d6fae9ce08f61d23494e951ae4f1f27f3.png";
-import imgE01 from "../../imports/ChatGptImageJul172026015631PmPng-1/3f1c60e24be682e40743368ca6b76ef2d767a9c8.png";
-import imgE02 from "../../imports/ChatGptImageJul172026015631PmPng-1/fc9f0dbac42cef72d8363323fb01970c6e12b5f9.png";
-import imgE03 from "../../imports/ChatGptImageJul172026015631PmPng-1/77755c30d666a555128e645c3d5d5a2f2a96f630.png";
-import imgE04 from "../../imports/ChatGptImageJul172026015631PmPng-1/8a4c2e3432ad7701d3999f3337e70574d8d2a98e.png";
+import imgLumi from "../../imports/continuity-panels/b15ee6515613c35b1310e6e61db298ac2d7fab0a.png";
+import imgKai from "../../imports/continuity-panels/87ef40f063e838b69162d1aaf65960a953fb2681.png";
+import imgHouse from "../../imports/continuity-panels/dcb9de54383238ece2f4d303da2ad45baf29ab23.png";
+import imgEpisode04 from "../../imports/continuity-panels/00354e1d6fae9ce08f61d23494e951ae4f1f27f3.png";
+import imgE01 from "../../imports/continuity-panels/3f1c60e24be682e40743368ca6b76ef2d767a9c8.png";
+import imgE02 from "../../imports/continuity-panels/fc9f0dbac42cef72d8363323fb01970c6e12b5f9.png";
+import imgE03 from "../../imports/continuity-panels/77755c30d666a555128e645c3d5d5a2f2a96f630.png";
+import imgE04 from "../../imports/continuity-panels/8a4c2e3432ad7701d3999f3337e70574d8d2a98e.png";
 
 const META = [
   "Fruitful Secrets",

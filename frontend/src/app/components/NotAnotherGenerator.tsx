@@ -5,14 +5,14 @@ import { FrameImage } from "./primitives/FrameImage";
 import { fadeUpSmall } from "../lib/motion";
 import { Clock, Clapperboard, DollarSign, RefreshCw, ArrowRight } from "lucide-react";
 
-import shotEstablishment from "../../imports/ChatGptImageJul172026015520PmPng-1/738ae77c2295c36eb99725313975441c1f770313.png";
-import shotRelationship from "../../imports/ChatGptImageJul172026015520PmPng-1/2953d60ec6d5149763d235afd4e49553e5c1ad12.png";
-import shotDisruption from "../../imports/ChatGptImageJul172026015520PmPng-1/1a8d788074b442e28828acdadfc3aadb88373ca8.png";
-import shotDiscovery from "../../imports/ChatGptImageJul172026015520PmPng-1/2096c642193be1b7fcbafc8f7434fe14c60fd8c1.png";
-import shotReaction from "../../imports/ChatGptImageJul172026015520PmPng-1/11e147be23db9b1c57ccedef686a173fa27ce1ac.png";
-import shotDecision from "../../imports/ChatGptImageJul172026015520PmPng-1/14ce52f7103a112bef03796d918d2c749423c03b.png";
-import shotReversal from "../../imports/ChatGptImageJul172026015520PmPng-1/20f163baa09836b5cffe0b8dd4f6db35e2ef9b86.png";
-import shotResolution from "../../imports/ChatGptImageJul172026015520PmPng-1/58835f8b9d87ab1272caaf22bebb2db4568f60c0.png";
+import shotEstablishment from "../../imports/generator-panels/738ae77c2295c36eb99725313975441c1f770313.png";
+import shotRelationship from "../../imports/generator-panels/2953d60ec6d5149763d235afd4e49553e5c1ad12.png";
+import shotDisruption from "../../imports/generator-panels/1a8d788074b442e28828acdadfc3aadb88373ca8.png";
+import shotDiscovery from "../../imports/generator-panels/2096c642193be1b7fcbafc8f7434fe14c60fd8c1.png";
+import shotReaction from "../../imports/generator-panels/11e147be23db9b1c57ccedef686a173fa27ce1ac.png";
+import shotDecision from "../../imports/generator-panels/14ce52f7103a112bef03796d918d2c749423c03b.png";
+import shotReversal from "../../imports/generator-panels/20f163baa09836b5cffe0b8dd4f6db35e2ef9b86.png";
+import shotResolution from "../../imports/generator-panels/58835f8b9d87ab1272caaf22bebb2db4568f60c0.png";
 
 interface Shot {
   n: string;
