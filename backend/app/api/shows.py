@@ -113,6 +113,18 @@ def get_show(show_id: str, db: Session = Depends(get_db)):
         raise HTTPException(404, "Show not found")
     return show_to_dict(show, db)
 
+@router.delete("/{show_id}")
+def delete_show(show_id: str, db: Session = Depends(get_db)):
+    show = db.query(Show).filter(Show.id == show_id).first()
+    if not show:
+        raise HTTPException(404, "Show not found")
+    db.query(Episode).filter(Episode.show_id == show_id).delete()
+    db.query(Character).filter(Character.show_id == show_id).delete()
+    db.query(StyleProfile).filter(StyleProfile.show_id == show_id).delete()
+    db.delete(show)
+    db.commit()
+    return {"deleted": show_id}
+
 @router.post("/{show_id}/characters")
 def create_character_from_proposal(show_id: str, payload: CharacterCreateRequest, db: Session = Depends(get_db)):
     """Create a character for a show (used by the autonomous proposal flow)."""

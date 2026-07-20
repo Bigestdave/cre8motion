@@ -451,13 +451,14 @@ Your job is to take the EpisodeCreativeBrief and output a JSON ProductionPlanSpe
 Strict rules:
 1. Divide the 45-second script into a strict beat sheet mapping to the Cre8Motion timing blueprint:
    - Hook (0-3s): Show something immediately understandable & unusual.
-   - Objective (3-8s): Establish who wants what.
+   - Objective (3-8s): Establish who wants what — always a visible physical object.
    - Plan/Obstacle (8-15s): Introduce what blocks the goal.
    - Attempt/Escalation (15-27s): Execute plan and increase tension.
-   - Reversal (27-36s): Sneeze/clumsiness or flaw redirects lasers/obstacles.
-   - Payoff (36-42s): Resolution of immediate action.
-   - Stinger (42-45s): Cliffhanger or final consequence.
-2. The script must be completely silent. No spoken dialogue.
+   - Reversal (27-36s): A known character flaw or earlier consequence redirects the situation.
+   - Payoff (36-42s): Resolution of immediate action using a previously planted setup.
+   - Stinger (42-45s): Cliffhanger or consequence that changes the ongoing story.
+2. The script must be completely silent. No spoken dialogue, no text on screen.
+3. One primary location. 2-4 characters. One dominant emotion per beat.
 Return only valid JSON."""
 
         prompt = f"Create a scene breakdown for this brief:\n{json.dumps(brief)}"
@@ -516,6 +517,10 @@ Rules:
 2. Use visual grammar: Cause -> Event -> Reaction -> Decision.
 3. Show before explaining: Object -> Eyeline -> Reaction -> Physical action.
 4. Keep important details central for the 9:16 vertical crop.
+5. Produce 8-12 shots. Use longer shots for emotional decisions and reactions, shorter shots for action and escalation.
+6. Every major action must be followed by a visible reaction shot — reactions carry meaning in silent storytelling.
+7. Preserve screen direction: if the goal is established on one side, characters keep moving toward that side.
+8. The critical prop must appear larger than realistic and stay visually consistent (add it to continuity_locks in every shot it appears in).
 Return a JSON array of these specs."""
 
         prompt = f"Create a detailed storyboard shot list for this plan:\n{json.dumps(plan)}\nBrief:\n{json.dumps(brief)}"
@@ -671,7 +676,21 @@ Style: {show_style}
 Characters: {json.dumps(characters)}
 Seed: {seed}
 
-Generate a silent 45-second episode script following the Cre8Motion 45-second script format:
+You are the Episode Ideator and Beat Writer for a dialogue-free 45-second vertical microdrama.
+
+SILENT-STORY RULES (all mandatory):
+1. ONE visible, physical objective (a key, photograph, necklace, wallet, letter — never an abstract goal). Establish it within the first 8 seconds.
+2. Use 2-4 characters maximum and ONE primary location (plus at most one quick closing reveal).
+3. The complication must grow from a known character flaw, trait, or an earlier consequence — never from coincidence.
+4. Include exactly one sharp REVERSAL that is visually understandable.
+5. Rule of three for the objective: show the object, show the character seeing it, show the character reacting. Object -> eyeline -> reaction -> action.
+6. One dominant emotion per beat (desire, confidence, fear, relief, suspicion, shock).
+7. Cause and effect must be immediate and physical: action -> visible consequence -> reaction.
+8. No convenient solutions that were not visually established earlier (setup before payoff).
+9. The ending must change the ongoing story and hook the next episode.
+10. The episode must be fully understandable with the sound off and zero text on screen.
+
+Generate the episode script in the Cre8Motion 45-second script format:
 EPISODE TITLE: [Title]
 SERIES: [Series]
 DURATION: 45 seconds
@@ -680,19 +699,19 @@ DIALOGUE: None
 PRIMARY CHARACTER: [Name]
 SUPPORTING CHARACTERS: [List]
 LOCATION: [Location]
-VISIBLE OBJECTIVE: [Object]
+VISIBLE OBJECTIVE: [Concrete object]
 CHARACTER MOTIVATION: [Motivation]
 OBSTACLE: [Obstacle]
-CHARACTER-DRIVEN COMPLICATION: [Complication]
-EMOTIONAL ARC: [Arc]
+CHARACTER-DRIVEN COMPLICATION: [Complication rooted in a flaw]
+EMOTIONAL ARC: [e.g. curiosity -> tension -> shock]
 REVERSAL: [Reversal]
-CONTINUITY CONSEQUENCE: [Consequence]
+CONTINUITY CONSEQUENCE: [What permanently changes]
 NEXT-EPISODE HOOK: [Hook]
-SETUP: [Setup]
-PAYOFF: [Payoff]
-THEMATIC FUNCTION: [Thematic]
+SETUP: [Planted detail]
+PAYOFF: [How the setup pays off]
+THEMATIC FUNCTION: [What this episode means]
 
-Beat sheet:
+Beat sheet (each beat: one story action, one dominant emotion):
 0-3s Hook: [Story action], [Emotion]
 3-8s Objective: [Story action], [Emotion]
 8-15s Plan: [Story action], [Emotion]
