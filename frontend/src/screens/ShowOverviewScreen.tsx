@@ -13,7 +13,7 @@ import {
   type CharacterSummary,
 } from '../data/api'
 import { pushRecentShow } from '../data/recents'
-import { showPoster } from '../data/artwork'
+import { usePoster } from '../data/artwork'
 import { SkeletonShowHeader, SkeletonEpisodeRow } from '../components/Skeleton'
 
 const tabs = ['Episodes', 'Characters'] as const
@@ -37,6 +37,7 @@ export function ShowOverviewScreen() {
   const [refImages, setRefImages] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const poster = usePoster(id, show?.title)
 
   useEffect(() => {
     if (!id) return
@@ -117,8 +118,8 @@ export function ShowOverviewScreen() {
       <div className="mx-auto max-w-[1280px] px-8 pb-12">
         {/* Header */}
         <div className="flex items-start gap-6">
-          {showPoster(show.title) ? (
-            <img src={showPoster(show.title)} alt={show.title} className="h-[150px] w-[210px] shrink-0 rounded-xl object-cover" />
+          {poster ? (
+            <img src={poster} alt={show.title} className="h-[150px] w-[210px] shrink-0 rounded-xl object-cover" />
           ) : (
             <Thumb shotId="S02" className="h-[150px] w-[210px] shrink-0 rounded-xl" />
           )}

@@ -5,9 +5,29 @@ import { Thumb } from '../components/ShotStrip'
 import { Ellipsis, CheckCircle } from '../components/icons'
 import { PlusIcon, SearchIcon } from '../components/icons2'
 import { getShows, listProductions, type Show, type ProductionListItem } from '../data/api'
-import { showPoster, showBanner } from '../data/artwork'
+import { showBanner, usePoster } from '../data/artwork'
 import { stageProgress, stageScreen, prettyStage } from '../data/pipeline'
 import { SkeletonShowCard, SkeletonHero } from '../components/Skeleton'
+
+/** Hero banner art: bundled banner first (widescreen composed), then generated poster, then gradient. */
+function HeroArt({ showId, title }: { showId: string; title: string }) {
+  const poster = usePoster(showId, title)
+  const banner = showBanner(title)
+  const src = banner || poster
+  return src ? (
+    <img src={src} alt={title} className="h-[248px] w-full object-cover" />
+  ) : (
+    <Thumb shotId="S06" className="h-[248px] w-full rounded-none" />
+  )
+}
+function ShowCardArt({ showId, title, thumbId }: { showId: string; title: string; thumbId: string }) {
+  const poster = usePoster(showId, title)
+  return poster ? (
+    <img src={poster} alt={title} className="aspect-[16/10] w-full object-cover" />
+  ) : (
+    <Thumb shotId={thumbId} className="aspect-[16/10] w-full rounded-none" />
+  )
+}
 
 const filters = ['All', 'In production', 'Complete'] as const
 
@@ -121,11 +141,7 @@ export function ShowsHomeScreen() {
               {heroRun ? 'CONTINUE PRODUCTION' : 'FEATURED SHOW'}
             </p>
             <div className="grid grid-cols-[1fr_380px] overflow-hidden rounded-xl border border-line-soft bg-surface">
-              {showBanner(heroShow.title) ? (
-                <img src={showBanner(heroShow.title)} alt={heroShow.title} className="h-[248px] w-full object-cover" />
-              ) : (
-                <Thumb shotId="S06" className="h-[248px] w-full rounded-none" />
-              )}
+              <HeroArt showId={heroShow.id} title={heroShow.title} />
               <div className="flex flex-col justify-center px-8 py-6">
                 <p className="text-[22px] font-semibold tracking-tight">{heroShow.title}</p>
                 <p className="pt-1 text-[14.5px] text-ink-2">
@@ -183,14 +199,7 @@ export function ShowsHomeScreen() {
                   className="group overflow-hidden rounded-xl border border-line-soft bg-surface transition-colors hover:border-line"
                 >
                   <div className="relative">
-                    {showPoster(s.title) ? (
-                      <img src={showPoster(s.title)} alt={s.title} className="aspect-[16/10] w-full object-cover" />
-                    ) : (
-                      <Thumb
-                        shotId={heroThumbs[index % heroThumbs.length]}
-                        className="aspect-[16/10] w-full rounded-none"
-                      />
-                    )}
+                    <ShowCardArt showId={s.id} title={s.title} thumbId={heroThumbs[index % heroThumbs.length]} />
                     <button
                       className="absolute right-3 top-3 rounded-md bg-app/60 p-1.5 text-ink-2 opacity-0 backdrop-blur transition-opacity hover:text-ink group-hover:opacity-100"
                       aria-label="More"
