@@ -4,8 +4,9 @@ import { WorkspaceShell } from '../components/WorkspaceShell'
 import { Thumb } from '../components/ShotStrip'
 import { Ellipsis, CheckCircle } from '../components/icons'
 import { PlusIcon, SearchIcon } from '../components/icons2'
-import { getShows, type Show } from '../data/api'
+import { getShows, listProductions, type Show, type ProductionListItem } from '../data/api'
 import { showPoster, showBanner } from '../data/artwork'
+import { stageProgress, stageScreen, prettyStage } from '../data/pipeline'
 import { SkeletonShowCard, SkeletonHero } from '../components/Skeleton'
 
 const filters = ['All', 'In production', 'Complete'] as const
@@ -28,14 +29,16 @@ function showStatus(show: Show): { label: string; kind: 'producing' | 'complete'
 export function ShowsHomeScreen() {
   const [filter, setFilter] = useState<(typeof filters)[number]>('All')
   const [shows, setShows] = useState<Show[]>([])
+  const [productions, setProductions] = useState<ProductionListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [menuFor, setMenuFor] = useState<string | null>(null)
 
   useEffect(() => {
-    getShows()
-      .then((data) => {
-        setShows(data)
+    Promise.all([getShows(), listProductions().catch(() => [] as ProductionListItem[])])
+      .then(([showData, prodData]) => {
+        setShows(showData)
+        setProductions(prodData)
         setLoading(false)
       })
       .catch((err) => {
@@ -51,10 +54,16 @@ export function ShowsHomeScreen() {
     return filter === 'In production' ? kind === 'producing' : kind === 'complete'
   })
 
-  // Feature the show that is actively producing, otherwise the most recent one.
-  const heroShow =
-    shows.find((s) => showStatus(s).kind === 'producing') || (shows.length ? shows[shows.length - 1] : null)
-  const heroStatus = heroShow ? showStatus(heroShow) : null
+  // Hero = the show with the most recent active production run (real backend state).
+  // Fallback when nothing is producing: the flagship (first show with episodes).
+  const activeRun = productions.find(
+    (p) => !['failed', 'complete', 'approved'].includes((p.status || '').toLowerCase()),
+  )
+  const heroShow = activeRun
+    ? shows.find((s) => s.id === activeRun.show_id) || null
+    : shows.find((s) => (s.episode_count || 0) > 0) || (shows.length ? shows[0] : null)
+  const heroRun = activeRun && heroShow && activeRun.show_id === heroShow.id ? activeRun : null
+  const heroProgress = heroRun ? stageProgress(heroRun.current_stage) : 0
 
   return (
     <WorkspaceShell>
@@ -109,7 +118,7 @@ export function ShowsHomeScreen() {
         {!loading && heroShow && (
           <>
             <p className="pb-3 pt-9 text-[11.5px] font-semibold tracking-[0.12em] text-ink-3">
-              CONTINUE PRODUCTION
+              {heroRun ? 'CONTINUE PRODUCTION' : 'FEATURED SHOW'}
             </p>
             <div className="grid grid-cols-[1fr_380px] overflow-hidden rounded-xl border border-line-soft bg-surface">
               {showBanner(heroShow.title) ? (
@@ -120,36 +129,35 @@ export function ShowsHomeScreen() {
               <div className="flex flex-col justify-center px-8 py-6">
                 <p className="text-[22px] font-semibold tracking-tight">{heroShow.title}</p>
                 <p className="pt-1 text-[14.5px] text-ink-2">
-                  {heroShow.latest_episode
-                    ? `Episode ${String(heroShow.latest_episode.episode_number).padStart(2, '0')} · ${heroShow.latest_episode.title}`
-                    : 'No episodes yet'}
+                  {heroRun
+                    ? `Episode ${String(heroRun.episode_number || 0).padStart(2, '0')} · ${heroRun.episode_title || 'Untitled'}`
+                    : heroShow.latest_episode
+                      ? `Episode ${String(heroShow.latest_episode.episode_number).padStart(2, '0')} · ${heroShow.latest_episode.title}`
+                      : 'No episodes yet'}
                 </p>
 
                 <p className="pt-5 text-[13.5px] text-ink-2">
-                  {heroStatus?.kind === 'producing' ? 'Production in progress' : 'Ready to begin production'}
+                  {heroRun ? prettyStage(heroRun.current_stage) : 'Ready to begin production'}
                 </p>
                 <div className="flex items-center gap-3 pt-2">
                   <div className="h-[5px] flex-1 overflow-hidden rounded-full bg-raised-2">
-                    <div
-                      className="h-full rounded-full bg-accent"
-                      style={{ width: heroStatus?.kind === 'producing' ? '72%' : '0%' }}
-                    />
+                    <div className="h-full rounded-full bg-accent" style={{ width: `${heroProgress}%` }} />
                   </div>
-                  <span className="text-[13.5px] tabular-nums text-ink-2">
-                    {heroStatus?.kind === 'producing' ? '72%' : '0%'}
-                  </span>
+                  <span className="text-[13.5px] tabular-nums text-ink-2">{heroProgress}%</span>
                 </div>
 
                 <div className="pt-5">
                   <Link
                     to={
-                      heroShow.latest_episode
-                        ? `/show/${heroShow.id}`
-                        : `/new-episode?showId=${heroShow.id}`
+                      heroRun
+                        ? `${stageScreen(heroRun.current_stage)}?productionId=${heroRun.id}`
+                        : heroShow.latest_episode
+                          ? `/show/${heroShow.id}`
+                          : `/new-episode?showId=${heroShow.id}`
                     }
                     className="inline-block rounded-lg bg-ink px-6 py-2.5 text-[14px] font-semibold text-app transition-colors hover:bg-ink-2"
                   >
-                    Continue
+                    {heroRun ? 'Continue' : 'Open show'}
                   </Link>
                 </div>
               </div>
