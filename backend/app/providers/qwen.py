@@ -355,7 +355,9 @@ class QwenReasoningProvider(ReasoningProvider):
     def __init__(self):
         self.client = OpenAI(
             api_key=settings.QWEN_API_KEY,
-            base_url=settings.QWEN_BASE_URL
+            base_url=settings.QWEN_BASE_URL,
+            timeout=90.0,
+            max_retries=1,
         )
         self.model = "qwen-max"
 
@@ -741,7 +743,9 @@ class QwenVisionProvider(VisionProvider):
     def __init__(self):
         self.client = OpenAI(
             api_key=settings.QWEN_API_KEY,
-            base_url=settings.QWEN_BASE_URL
+            base_url=settings.QWEN_BASE_URL,
+            timeout=90.0,
+            max_retries=1,
         )
         self.model = "qwen3-vl-plus"
 
