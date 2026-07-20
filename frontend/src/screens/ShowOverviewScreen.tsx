@@ -13,6 +13,7 @@ import {
   type CharacterSummary,
 } from '../data/api'
 import { pushRecentShow } from '../data/recents'
+import { SkeletonShowHeader, SkeletonEpisodeRow } from '../components/Skeleton'
 
 const tabs = ['Episodes', 'Characters'] as const
 
@@ -76,7 +77,15 @@ export function ShowOverviewScreen() {
   if (loading) {
     return (
       <WorkspaceShell breadcrumb="Shows" backTo="/shows">
-        <div className="flex h-[300px] items-center justify-center text-ink-2">Loading show...</div>
+        <div className="mx-auto max-w-[1280px] px-8 pb-12">
+          <SkeletonShowHeader />
+          <div className="mt-8 h-[46px] border-b border-line-soft" />
+          <div className="mt-7 flex flex-col gap-4">
+            <SkeletonEpisodeRow />
+            <SkeletonEpisodeRow />
+            <SkeletonEpisodeRow />
+          </div>
+        </div>
       </WorkspaceShell>
     )
   }

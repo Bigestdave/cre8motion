@@ -11,6 +11,7 @@ import {
   uploadCharacterReference,
   type Show,
 } from '../data/api'
+import { SkeletonShowCard } from '../components/Skeleton'
 
 interface CharacterAsset {
   id: string
@@ -197,7 +198,12 @@ export function AssetsScreen() {
 
           {/* CHARACTERS grid */}
           {loading ? (
-            <div className="flex h-[240px] items-center justify-center text-[14.5px] text-ink-3">Loading assets...</div>
+            <div className="mt-8 grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-5">
+              <SkeletonShowCard />
+              <SkeletonShowCard />
+              <SkeletonShowCard />
+              <SkeletonShowCard />
+            </div>
           ) : filtered.length === 0 ? (
             <div className="mt-8 flex h-[240px] flex-col items-center justify-center gap-3 rounded-xl border border-line-soft bg-surface text-[14.5px] text-ink-3">
               <p>{assets.length === 0 ? 'No assets yet — characters appear here when you create a show.' : 'No assets match your filter.'}</p>

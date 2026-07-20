@@ -5,6 +5,7 @@ import { Thumb } from '../components/ShotStrip'
 import { Ellipsis, CheckCircle } from '../components/icons'
 import { PlusIcon, SearchIcon } from '../components/icons2'
 import { getShows, type Show } from '../data/api'
+import { SkeletonShowCard, SkeletonHero } from '../components/Skeleton'
 
 const filters = ['All', 'In production', 'Complete'] as const
 
@@ -95,7 +96,16 @@ export function ShowsHomeScreen() {
           </div>
         </div>
 
-        {heroShow && (
+        {loading && (
+          <>
+            <p className="pb-3 pt-9 text-[11.5px] font-semibold tracking-[0.12em] text-ink-3">
+              CONTINUE PRODUCTION
+            </p>
+            <SkeletonHero />
+          </>
+        )}
+
+        {!loading && heroShow && (
           <>
             <p className="pb-3 pt-9 text-[11.5px] font-semibold tracking-[0.12em] text-ink-3">
               CONTINUE PRODUCTION
@@ -145,7 +155,11 @@ export function ShowsHomeScreen() {
         <p className="pb-3 pt-9 text-[11.5px] font-semibold tracking-[0.12em] text-ink-3">YOUR SHOWS</p>
         <div className="grid grid-cols-3 gap-5">
           {loading ? (
-            <div className="p-4 text-ink-2">Loading shows...</div>
+            <>
+              <SkeletonShowCard />
+              <SkeletonShowCard />
+              <SkeletonShowCard />
+            </>
           ) : (
             visibleShows.map((s, index) => {
               const status = showStatus(s)
@@ -218,18 +232,20 @@ export function ShowsHomeScreen() {
               )
             })
           )}
-          <Link
-            to="/create-show"
-            className="flex min-h-[280px] flex-col items-center justify-center rounded-xl border border-dashed border-line px-8 text-center transition-colors hover:border-line-strong"
-          >
-            <span className="flex h-14 w-14 items-center justify-center rounded-full border border-line text-accent">
-              <PlusIcon size={22} />
-            </span>
-            <span className="pt-4 text-[16px] font-semibold text-ink">Create show</span>
-            <span className="pt-2 text-[13.5px] leading-relaxed text-ink-3">
-              Start a new animated series. Our AI showrunner will plan, produce, and bring it to life.
-            </span>
-          </Link>
+          {!loading && (
+            <Link
+              to="/create-show"
+              className="flex min-h-[280px] flex-col items-center justify-center rounded-xl border border-dashed border-line px-8 text-center transition-colors hover:border-line-strong"
+            >
+              <span className="flex h-14 w-14 items-center justify-center rounded-full border border-line text-accent">
+                <PlusIcon size={22} />
+              </span>
+              <span className="pt-4 text-[16px] font-semibold text-ink">Create show</span>
+              <span className="pt-2 text-[13.5px] leading-relaxed text-ink-3">
+                Start a new animated series. Our AI showrunner will plan, produce, and bring it to life.
+              </span>
+            </Link>
+          )}
         </div>
       </div>
     </WorkspaceShell>

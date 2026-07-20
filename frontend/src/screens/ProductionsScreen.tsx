@@ -4,6 +4,7 @@ import { WorkspaceShell } from '../components/WorkspaceShell'
 import { SearchIcon } from '../components/icons2'
 import { Thumb } from '../components/ShotStrip'
 import { listProductions, type ProductionListItem } from '../data/api'
+import { SkeletonTableRow } from '../components/Skeleton'
 
 type StatusType = 'active' | 'warning' | 'review' | 'failed' | 'complete'
 
@@ -245,9 +246,11 @@ export function ProductionsScreen() {
           })}
 
           {loading && (
-            <div className="flex h-[200px] items-center justify-center bg-surface text-[14.5px] text-ink-3">
-              Loading productions...
-            </div>
+            <>
+              <SkeletonTableRow />
+              <SkeletonTableRow />
+              <SkeletonTableRow />
+            </>
           )}
 
           {!loading && filtered.length === 0 && (
