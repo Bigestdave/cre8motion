@@ -12,10 +12,18 @@ export function LandingScreen() {
       <Nav />
       <main>
         <Hero />
-        <NotAnotherGenerator />
-        <StickyPipeline />
-        <OneShot />
-        <Continuity />
+        <div id="product">
+          <NotAnotherGenerator />
+        </div>
+        <div id="how-it-works">
+          <StickyPipeline />
+        </div>
+        <div id="examples">
+          <OneShot />
+        </div>
+        <div id="technology">
+          <Continuity />
+        </div>
         <CTA />
       </main>
       <Footer />

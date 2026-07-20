@@ -1,15 +1,18 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { WizardShell, WizardTitle } from '../components/WizardShell'
-import { Ellipsis } from '../components/icons'
 import { UploadCloud, PlusIcon } from '../components/icons2'
-import { createShow, createCharacter } from '../data/api'
+import { createShow, createCharacter, uploadCharacterReference } from '../data/api'
 
 export function CreateShowCharactersScreen() {
   const location = useLocation()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
-  
+  const [error, setError] = useState<string | null>(null)
+  // Reference image files selected per character index (uploaded after the character is created)
+  const [refFiles, setRefFiles] = useState<Record<number, File[]>>({})
+  const fileInputs = useRef<Record<number, HTMLInputElement | null>>({})
+
   const initialProposal = location.state?.proposal || {}
   const [proposal, setProposal] = useState({
     ...initialProposal,
@@ -22,22 +25,51 @@ export function CreateShowCharactersScreen() {
     setProposal({ ...proposal, characters: chars })
   }
 
+  const handleRemoveChar = (index: number) => {
+    setProposal({ ...proposal, characters: proposal.characters.filter((_: unknown, i: number) => i !== index) })
+    setRefFiles((prev) => {
+      const next: Record<number, File[]> = {}
+      Object.entries(prev).forEach(([k, v]) => {
+        const i = Number(k)
+        if (i < index) next[i] = v
+        else if (i > index) next[i - 1] = v
+      })
+      return next
+    })
+  }
+
+  const handleFiles = (index: number, files: FileList | null) => {
+    if (!files?.length) return
+    const images = Array.from(files).filter((f) => f.type.startsWith('image/'))
+    if (images.length) setRefFiles((prev) => ({ ...prev, [index]: [...(prev[index] || []), ...images].slice(0, 4) }))
+  }
+
   const handleCreateShow = async () => {
     setLoading(true)
+    setError(null)
     try {
       // 1. Create Show
       const show = await createShow(proposal)
-      
-      // 2. Create Characters
-      for (const char of proposal.characters) {
-        await createCharacter(show.id, char)
+
+      // 2. Create characters, then upload any selected reference images
+      for (let i = 0; i < proposal.characters.length; i++) {
+        const char = proposal.characters[i]
+        if (!char.name) continue
+        const created = await createCharacter(show.id, char)
+        for (const file of refFiles[i] || []) {
+          try {
+            await uploadCharacterReference(created.id, file)
+          } catch (e) {
+            console.error('reference upload failed', e)
+          }
+        }
       }
-      
+
       // 3. Navigate to show overview
       navigate(`/show/${show.id}`)
     } catch (err) {
       console.error(err)
-      alert("Failed to create show")
+      setError(err instanceof Error ? err.message : 'Failed to create show. Please try again.')
       setLoading(false)
     }
   }
@@ -55,16 +87,19 @@ export function CreateShowCharactersScreen() {
         </Link>
       }
       footerRight={
-        <button
-          onClick={handleCreateShow}
-          disabled={loading}
-          className="flex items-center gap-2.5 rounded-lg bg-ink px-6 py-3 text-[15px] font-medium text-app transition-colors hover:bg-ink-2 disabled:opacity-50"
-        >
-          {loading ? 'Creating...' : 'Create show'}
-          <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-            <path d="M4 10h12M11 4.5L16.5 10 11 15.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-4">
+          {error && <p className="text-[13.5px] text-red-400">{error}</p>}
+          <button
+            onClick={handleCreateShow}
+            disabled={loading || proposal.characters.length === 0}
+            className="flex items-center gap-2.5 rounded-lg bg-ink px-6 py-3 text-[15px] font-medium text-app transition-colors hover:bg-ink-2 disabled:opacity-50"
+          >
+            {loading ? 'Creating...' : 'Create show'}
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+              <path d="M4 10h12M11 4.5L16.5 10 11 15.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
       }
     >
       <WizardTitle
@@ -72,20 +107,39 @@ export function CreateShowCharactersScreen() {
         subtitle="Strong references help Cre8Motion preserve identity across scenes and episodes."
       />
       <div className="mx-auto max-w-[1080px] px-6">
-        
+
         {proposal.characters.map((char: any, idx: number) => (
           <div key={idx} className="rounded-xl border border-line-soft bg-surface p-6 mb-8">
             <div className="flex items-center justify-between pb-5">
               <p className="text-[16px] font-semibold">Character 0{idx + 1}</p>
-              <button className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-ink-3 transition-colors hover:bg-raised" aria-label="More">
-                <Ellipsis size={15} />
+              <button
+                onClick={() => handleRemoveChar(idx)}
+                className="rounded-lg border border-line px-3 py-1.5 text-[13px] text-ink-3 transition-colors hover:bg-raised hover:text-ink"
+              >
+                Remove
               </button>
             </div>
 
             <div className="grid grid-cols-[1fr_440px] gap-8">
               {/* Left: upload + reference thumbs */}
               <div>
-                <button className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong py-9 transition-colors hover:border-accent-border">
+                <input
+                  ref={(el) => { fileInputs.current[idx] = el }}
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => handleFiles(idx, e.target.files)}
+                />
+                <button
+                  onClick={() => fileInputs.current[idx]?.click()}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    handleFiles(idx, e.dataTransfer.files)
+                  }}
+                  className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong py-9 transition-colors hover:border-accent-border"
+                >
                   <UploadCloud className="text-ink-2" />
                   <p className="text-[15px] font-medium">Upload references</p>
                   <p className="text-[13.5px] text-ink-2">
@@ -93,6 +147,28 @@ export function CreateShowCharactersScreen() {
                   </p>
                   <p className="text-[12.5px] text-ink-3">JPG or PNG</p>
                 </button>
+                {(refFiles[idx]?.length ?? 0) > 0 && (
+                  <div className="mt-4 flex gap-3">
+                    {refFiles[idx].map((file, fi) => (
+                      <div key={fi} className="relative">
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt={file.name}
+                          className="h-20 w-20 rounded-lg border border-line object-cover"
+                        />
+                        <button
+                          onClick={() =>
+                            setRefFiles((prev) => ({ ...prev, [idx]: prev[idx].filter((_, i) => i !== fi) }))
+                          }
+                          className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full border border-line bg-surface text-[11px] text-ink-2 hover:text-ink"
+                          aria-label="Remove image"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Right: name, description */}
@@ -116,7 +192,13 @@ export function CreateShowCharactersScreen() {
           </div>
         ))}
 
-        <button 
+        {proposal.characters.length === 0 && (
+          <div className="mb-8 rounded-xl border border-line-soft bg-surface py-12 text-center text-[14.5px] text-ink-2">
+            No characters were proposed. Add at least one character to continue.
+          </div>
+        )}
+
+        <button
           onClick={() => setProposal({...proposal, characters: [...proposal.characters, {name: '', canonical_description: ''}]})}
           className="mt-5 flex items-center gap-2.5 text-[14.5px] text-ink-2 transition-colors hover:text-ink"
         >
@@ -127,4 +209,3 @@ export function CreateShowCharactersScreen() {
     </WizardShell>
   )
 }
-

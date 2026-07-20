@@ -4,6 +4,7 @@ import { PlusIcon, GridIcon, FilmIcon, FolderIcon, UsageIcon, GearIcon, BellIcon
 import { ArrowLeft, ChevronDown } from './icons'
 import { Thumb } from './ShotStrip'
 import logoUrl from '../assets/logo.png'
+import { getRecentShows } from '../data/recents'
 
 const workspaceNav = [
   { label: 'Shows', icon: GridIcon, to: '/shows' },
@@ -11,11 +12,7 @@ const workspaceNav = [
   { label: 'Assets', icon: FolderIcon, to: '/assets' },
 ]
 
-const recents = [
-  { label: 'Fruitful Secrets', thumbId: 'S02', to: '/show/fruitful-secrets', active: true },
-  { label: 'Tiny Kingdom', thumbId: 'S04', to: '#', active: false },
-  { label: 'Last Seed', thumbId: 'S01', to: '#', active: false },
-]
+const RECENT_THUMBS = ['S02', 'S04', 'S01']
 
 interface WorkspaceShellProps {
   children: ReactNode
@@ -26,6 +23,7 @@ interface WorkspaceShellProps {
 
 export function WorkspaceShell({ children, breadcrumb, backTo = '/shows' }: WorkspaceShellProps) {
   const [showNotifications, setShowNotifications] = useState(false)
+  const recents = getRecentShows()
 
   return (
     <div className="flex h-screen overflow-hidden bg-app">
@@ -65,20 +63,24 @@ export function WorkspaceShell({ children, breadcrumb, backTo = '/shows' }: Work
           ))}
         </nav>
 
-        <p className="px-5 pb-2 pt-6 text-[11.5px] font-semibold tracking-[0.12em] text-ink-3">RECENT</p>
-        <nav className="flex flex-col gap-0.5 px-2.5">
-          {recents.map((r) => (
-            <Link
-              key={r.label}
-              to={r.to}
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-[14.5px] text-ink-2 transition-colors hover:bg-raised hover:text-ink"
-            >
-              <Thumb shotId={r.thumbId} className="h-7 w-7 shrink-0 rounded-md" />
-              <span className="min-w-0 flex-1 truncate">{r.label}</span>
-              {r.active && <span className="h-2 w-2 shrink-0 rounded-full bg-accent" />}
-            </Link>
-          ))}
-        </nav>
+        {recents.length > 0 && (
+          <>
+            <p className="px-5 pb-2 pt-6 text-[11.5px] font-semibold tracking-[0.12em] text-ink-3">RECENT</p>
+            <nav className="flex flex-col gap-0.5 px-2.5">
+              {recents.map((r, i) => (
+                <Link
+                  key={r.id}
+                  to={`/show/${r.id}`}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-[14.5px] text-ink-2 transition-colors hover:bg-raised hover:text-ink"
+                >
+                  <Thumb shotId={RECENT_THUMBS[i % RECENT_THUMBS.length]} className="h-7 w-7 shrink-0 rounded-md" />
+                  <span className="min-w-0 flex-1 truncate">{r.title}</span>
+                  {i === 0 && <span className="h-2 w-2 shrink-0 rounded-full bg-accent" />}
+                </Link>
+              ))}
+            </nav>
+          </>
+        )}
 
         <div className="mt-auto border-t border-line-soft px-2.5 py-4">
           <NavLink

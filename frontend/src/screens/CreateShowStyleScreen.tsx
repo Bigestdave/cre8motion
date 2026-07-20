@@ -20,6 +20,17 @@ const styles = [
   },
 ]
 
+/** creative_direction may arrive as a string or an object like {colors: "..."} — render it as text either way. */
+function creativeDirectionText(cd: unknown): string {
+  if (!cd) return ''
+  if (typeof cd === 'string') return cd
+  if (typeof cd === 'object') {
+    const vals = Object.values(cd as Record<string, unknown>).filter((v) => typeof v === 'string')
+    return vals.join('. ')
+  }
+  return ''
+}
+
 export function CreateShowStyleScreen() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -43,8 +54,13 @@ export function CreateShowStyleScreen() {
   }, [proposal])
 
   const handleContinue = () => {
-    // Pass the edited proposal to the characters screen
-    navigate('/create-show/characters', { state: { proposal } })
+    // Merge the selected base style into the proposal before passing it on.
+    const styleTitle = styles.find((s) => s.id === selectedStyle)?.title || 'Polished 3D'
+    const merged = {
+      ...proposal,
+      visual_style: { ...proposal.visual_style, animation_style: styleTitle },
+    }
+    navigate('/create-show/characters', { state: { proposal: merged } })
   }
 
   return (
@@ -88,11 +104,11 @@ export function CreateShowStyleScreen() {
             />
           </Field>
           <Field label="Creative Direction">
-            <TextArea 
-              value={proposal.visual_style?.creative_direction?.colors || JSON.stringify(proposal.visual_style?.creative_direction) || ''}
+            <TextArea
+              value={creativeDirectionText(proposal.visual_style?.creative_direction)}
               onChange={(v) => setProposal({
-                ...proposal, 
-                visual_style: { ...proposal.visual_style, creative_direction: { colors: v } }
+                ...proposal,
+                visual_style: { ...proposal.visual_style, creative_direction: v }
               })}
               rows={3}
             />

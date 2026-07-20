@@ -27,6 +27,8 @@ export function ShowsHomeScreen() {
   const [filter, setFilter] = useState<(typeof filters)[number]>('All')
   const [shows, setShows] = useState<Show[]>([])
   const [loading, setLoading] = useState(true)
+  const [query, setQuery] = useState('')
+  const [menuFor, setMenuFor] = useState<string | null>(null)
 
   useEffect(() => {
     getShows()
@@ -41,6 +43,7 @@ export function ShowsHomeScreen() {
   }, [])
 
   const visibleShows = shows.filter((s) => {
+    if (query && !s.title.toLowerCase().includes(query.toLowerCase())) return false
     if (filter === 'All') return true
     const kind = showStatus(s).kind
     return filter === 'In production' ? kind === 'producing' : kind === 'complete'
@@ -81,10 +84,14 @@ export function ShowsHomeScreen() {
               </button>
             ))}
           </div>
-          <div className="flex w-[300px] items-center gap-2.5 rounded-lg border border-line bg-raised px-3.5 py-2 text-[14px] text-ink-3">
+          <div className="flex w-[300px] items-center gap-2.5 rounded-lg border border-line bg-raised px-3.5 py-2 text-[14px] text-ink-3 transition-colors focus-within:border-accent-border">
             <SearchIcon size={15} />
-            <span className="flex-1">Search shows</span>
-            <span className="rounded border border-line-soft px-1.5 py-0.5 text-[11.5px] text-ink-4">⌘K</span>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search shows"
+              className="flex-1 bg-transparent text-ink outline-none placeholder:text-ink-3"
+            />
           </div>
         </div>
 
@@ -156,10 +163,44 @@ export function ShowsHomeScreen() {
                     <button
                       className="absolute right-3 top-3 rounded-md bg-app/60 p-1.5 text-ink-2 opacity-0 backdrop-blur transition-opacity hover:text-ink group-hover:opacity-100"
                       aria-label="More"
-                      onClick={(e) => e.preventDefault()}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        setMenuFor(menuFor === s.id ? null : s.id)
+                      }}
                     >
                       <Ellipsis size={16} />
                     </button>
+                    {menuFor === s.id && (
+                      <div
+                        className="absolute right-3 top-11 z-20 w-[180px] overflow-hidden rounded-lg border border-line bg-surface py-1 shadow-xl"
+                        onClick={(e) => e.preventDefault()}
+                      >
+                        <Link
+                          to={`/show/${s.id}`}
+                          className="block px-4 py-2 text-[13.5px] text-ink-2 transition-colors hover:bg-raised hover:text-ink"
+                        >
+                          Open show
+                        </Link>
+                        <Link
+                          to={`/new-episode?showId=${s.id}`}
+                          className="block px-4 py-2 text-[13.5px] text-ink-2 transition-colors hover:bg-raised hover:text-ink"
+                        >
+                          New episode
+                        </Link>
+                        <button
+                          className="block w-full px-4 py-2 text-left text-[13.5px] text-ink-2 transition-colors hover:bg-raised hover:text-ink"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            navigator.clipboard?.writeText(`${location.origin}/#/show/${s.id}`)
+                            setMenuFor(null)
+                          }}
+                        >
+                          Copy link
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div className="p-4">
                     <p className="text-[17px] font-semibold tracking-tight">{s.title}</p>

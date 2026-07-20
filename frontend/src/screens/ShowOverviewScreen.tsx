@@ -12,6 +12,7 @@ import {
   type Show,
   type CharacterSummary,
 } from '../data/api'
+import { pushRecentShow } from '../data/recents'
 
 const tabs = ['Episodes', 'Characters'] as const
 
@@ -44,6 +45,7 @@ export function ShowOverviewScreen() {
         setShow(showData)
         setCharacters(charData)
         setLoading(false)
+        pushRecentShow({ id: showData.id, title: showData.title })
         // Load first canonical reference image per character (best-effort)
         const images: Record<string, string> = {}
         await Promise.all(

@@ -142,10 +142,30 @@ export function CTA() {
   );
 }
 
-const FOOTER_COLS = [
-  { title: "Product", links: ["How it works", "Examples", "Technology"] },
-  { title: "Resources", links: ["Documentation", "Qwen Cloud", "GitHub"] },
-  { title: "Company", links: ["About", "Contact"] },
+const FOOTER_COLS: Array<{ title: string; links: Array<{ label: string; href?: string; scrollTo?: string }> }> = [
+  {
+    title: "Product",
+    links: [
+      { label: "How it works", scrollTo: "how-it-works" },
+      { label: "Examples", scrollTo: "examples" },
+      { label: "Technology", scrollTo: "technology" },
+    ],
+  },
+  {
+    title: "Resources",
+    links: [
+      { label: "Documentation", href: "https://github.com/Bigestdave/cre8motion#readme" },
+      { label: "Qwen Cloud", href: "https://qwen.ai" },
+      { label: "GitHub", href: "https://github.com/Bigestdave/cre8motion" },
+    ],
+  },
+  {
+    title: "App",
+    links: [
+      { label: "Open the studio", href: "#/shows" },
+      { label: "Create a show", href: "#/create-show" },
+    ],
+  },
 ];
 
 export function Footer() {
@@ -178,13 +198,26 @@ export function Footer() {
             </div>
             <ul className="flex flex-col gap-4">
               {col.links.map((l) => (
-                <li key={l}>
-                  <a
-                    href="#"
-                    className="text-[0.95rem] text-ink-2 transition-colors duration-150 hover:text-ink"
-                  >
-                    {l}
-                  </a>
+                <li key={l.label}>
+                  {l.scrollTo ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        document.getElementById(l.scrollTo!)?.scrollIntoView({ behavior: "smooth", block: "start" })
+                      }
+                      className="text-[0.95rem] text-ink-2 transition-colors duration-150 hover:text-ink"
+                    >
+                      {l.label}
+                    </button>
+                  ) : (
+                    <a
+                      href={l.href}
+                      {...(l.href?.startsWith("http") ? { target: "_blank", rel: "noreferrer" } : {})}
+                      className="text-[0.95rem] text-ink-2 transition-colors duration-150 hover:text-ink"
+                    >
+                      {l.label}
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>

@@ -3,7 +3,16 @@ import { motion, useReducedMotion } from "motion/react";
 import { CTAButton } from "./primitives/CTAButton";
 import logoUrl from "../../assets/logo.png";
 
-const LINKS = ["Product", "How it works", "Examples", "Technology"];
+const LINKS: Array<{ label: string; target: string }> = [
+  { label: "Product", target: "product" },
+  { label: "How it works", target: "how-it-works" },
+  { label: "Examples", target: "examples" },
+  { label: "Technology", target: "technology" },
+];
+
+function scrollToSection(id: string) {
+  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
 
 export function Nav() {
   const reduce = useReducedMotion();
@@ -28,20 +37,25 @@ export function Nav() {
       }`}
     >
       <div className="mx-auto flex h-16 w-full max-w-[1280px] items-center justify-between px-6 md:px-10">
-        <a href="#" className="flex items-center gap-2.5 text-[1.05rem] font-semibold tracking-[-0.02em] text-ink">
+        <button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="flex items-center gap-2.5 text-[1.05rem] font-semibold tracking-[-0.02em] text-ink"
+        >
           <img src={logoUrl} alt="" className="h-7 w-7 rounded-md" />
           <span>Cre<span className="text-accent">8</span>Motion</span>
-        </a>
+        </button>
 
         <nav className="hidden items-center gap-8 md:flex">
           {LINKS.map((l) => (
-            <a
-              key={l}
-              href="#"
+            <button
+              key={l.label}
+              type="button"
+              onClick={() => scrollToSection(l.target)}
               className="text-[0.9rem] text-ink-2 opacity-90 transition-opacity duration-150 hover:opacity-100 hover:text-ink"
             >
-              {l}
-            </a>
+              {l.label}
+            </button>
           ))}
         </nav>
 

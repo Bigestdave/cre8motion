@@ -177,6 +177,17 @@ export const listCharacters = (showId: string) =>
 export const listCharacterReferences = (characterId: string) =>
   fetchJson<CharacterReference[]>(`/characters/${encodeURIComponent(characterId)}/references`)
 
+export async function uploadCharacterReference(characterId: string, file: File, referenceType = 'front_view') {
+  const form = new FormData()
+  form.append('file', file)
+  const response = await fetch(
+    `${API_BASE_URL}/characters/${encodeURIComponent(characterId)}/references?reference_type=${encodeURIComponent(referenceType)}`,
+    { method: 'POST', body: form },
+  )
+  if (!response.ok) throw new ApiError(response.status, `Reference upload failed (${response.status})`)
+  return response.json() as Promise<CharacterReference>
+}
+
 export function createCharacter(showId: string, data: { name: string; canonical_description?: string }) {
   return fetchJson<{ id: string; name: string; canonical_description?: string }>(`/shows/${encodeURIComponent(showId)}/characters`, {
     method: 'POST',

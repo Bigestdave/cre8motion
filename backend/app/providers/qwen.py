@@ -620,7 +620,20 @@ Return a JSON array of these specs."""
         prompt = f"""Create a TV show proposal based on:
 Genre: {genre}, Style: {style}, Tone: {tone}, Audience: {audience}, Duration: {duration}s, Seed: {seed}
 Ensure character descriptions specify signature silhouettes, signature colors, body structures, and key props.
-Return a valid JSON object matching the schema."""
+Return ONLY a valid JSON object with EXACTLY this structure:
+{{
+  "title": "<show title, 2-5 words>",
+  "premise": "<1-2 sentence show premise>",
+  "characters": [
+    {{"name": "<character name>", "canonical_description": "<visual description: silhouette, colors, body structure, key props>"}},
+    ... 2 to 4 characters total ...
+  ],
+  "visual_style": {{
+    "animation_style": "{style}",
+    "creative_direction": "<lighting, framing, and color guidance as one string>",
+    "negative_prompt": "photorealistic, text, watermark, low quality"
+  }}
+}}"""
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
