@@ -22,20 +22,20 @@ export function VideoPlayer({
   total = '00:05',
   progress = 45,
   overlayLabel,
-  aspect = 'aspect-[16/8.2]',
+  aspect = 'aspect-[9/16]',
 }: VideoPlayerProps) {
   const [playing, setPlaying] = useState(false)
   const [videoFailed, setVideoFailed] = useState(false)
   const videoUrl = getArtifactDownloadUrl(artifactId)
 
   return (
-    <div className="overflow-hidden rounded-xl bg-black">
+    <div className="mx-auto w-full max-w-[360px] overflow-hidden rounded-xl bg-black">
       <div className={`relative ${aspect} w-full`}>
         {videoUrl && !videoFailed ? (
           <video
             src={videoUrl}
             controls
-            className="absolute inset-0 h-full w-full object-cover"
+            className="absolute inset-0 h-full w-full object-contain"
             onError={() => setVideoFailed(true)}
           />
         ) : (
