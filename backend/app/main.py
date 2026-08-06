@@ -27,6 +27,8 @@ app.include_router(events.router)
 app.mount("/media", StaticFiles(directory=ARTIFACTS_DIR), name="media")
 
 
-@app.get("/health")
+# Accept HEAD too so free uptime pingers (UptimeRobot, cron-job.org) that
+# default to HEAD keep the Render backend awake without a 405.
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health_check():
     return {"status": "ok", "project": settings.PROJECT_NAME}
