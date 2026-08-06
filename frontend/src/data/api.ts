@@ -63,6 +63,8 @@ export interface ProductionRun {
   budget_used: number
   retry_reserve: number
   failure_reason?: string | null
+  final_video_artifact_id?: string | null
+  final_video_status?: string | null
 }
 
 export interface ProductionListItem {
@@ -262,6 +264,8 @@ export function createEpisode(showId: string, data: EpisodeDraft & { duration_se
 export interface ProductionDetail extends ProductionListItem {
   retry_reserve?: number
   target_duration_seconds?: number | null
+  final_video_artifact_id?: string | null
+  final_video_status?: string | null
 }
 
 export const listProductions = () => fetchJson<ProductionListItem[]>('/productions/')

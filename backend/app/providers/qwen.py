@@ -536,10 +536,17 @@ Return a JSON array of these specs."""
                 response_format={"type": "json_object"}
             )
             data = json.loads(response.choices[0].message.content)
-            if isinstance(data, dict) and "shots" in data:
-                return data["shots"]
-            elif isinstance(data, list):
+            if isinstance(data, list):
                 return data
+            if isinstance(data, dict):
+                # qwen-max wraps the array under varying keys ("shots", "shot_list",
+                # "storyboard", ...); accept any top-level list of shot dicts.
+                for key in ("shots", "shot_list", "storyboard", "shot_specs"):
+                    if isinstance(data.get(key), list):
+                        return data[key]
+                for value in data.values():
+                    if isinstance(value, list) and value and isinstance(value[0], dict):
+                        return value
             return []
         except Exception as e:
             print(f"Error in generate_shot_list: {e}")
@@ -768,7 +775,7 @@ class QwenImageProvider(ImageProvider):
         self.api_key = settings.QWEN_API_KEY
         self.base_url = "https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis"
 
-    def generate_image(self, prompt: str, negative_prompt: str = None, size: str = "1024*1024", model: str = "qwen-image-2.0") -> dict:
+    def generate_image(self, prompt: str, negative_prompt: str = None, size: str = "1024*1024", model: str = "qwen-image-plus") -> dict:
         """Generic async image generation used for posters and character references."""
         print(f"Generating image using {model} at {size}")
         if settings.DEMO_MODE or not self.api_key:
@@ -813,7 +820,7 @@ class QwenImageProvider(ImageProvider):
             "parameters": {"size": "720*1280", "n": 1}
         }
         try:
-            resp = httpx.post(self.base_url, headers=headers, json=data)
+            resp = httpx.post(self.base_url, headers=headers, json=data, timeout=30)
             resp.raise_for_status()
             res_json = resp.json()
             return {"task_id": res_json["output"]["task_id"], "status": "PENDING"}
@@ -839,7 +846,7 @@ class QwenImageProvider(ImageProvider):
             "parameters": {"size": "720*1280", "n": 1}
         }
         try:
-            resp = httpx.post(self.base_url, headers=headers, json=data)
+            resp = httpx.post(self.base_url, headers=headers, json=data, timeout=30)
             resp.raise_for_status()
             res_json = resp.json()
             return {"task_id": res_json["output"]["task_id"], "status": "PENDING"}
@@ -851,7 +858,7 @@ class QwenImageProvider(ImageProvider):
         headers = {"Authorization": f"Bearer {self.api_key}"}
         url = f"https://dashscope-intl.aliyuncs.com/api/v1/tasks/{task_id}"
         try:
-            resp = httpx.get(url, headers=headers)
+            resp = httpx.get(url, headers=headers, timeout=30)
             res_json = resp.json()
             status = res_json["output"]["task_status"]
             if status == "SUCCEEDED":
@@ -860,17 +867,23 @@ class QwenImageProvider(ImageProvider):
                 return {"status": "FAILED"}
             else:
                 return {"status": "PENDING"}
+        except httpx.TransportError as e:
+            # Transient network problem — keep polling instead of failing the shot.
+            print(f"Transient error polling image task (will retry): {e}")
+            return {"status": "PENDING"}
         except Exception as e:
             print(f"Error polling task: {e}")
             return {"status": "FAILED"}
 
     def download_image(self, url: str, local_path: str) -> str:
         try:
-            resp = httpx.get(url)
+            resp = httpx.get(url, timeout=60, follow_redirects=True)
+            resp.raise_for_status()
             with open(local_path, "wb") as f:
                 f.write(resp.content)
             return local_path
-        except Exception:
+        except Exception as e:
+            print(f"Error downloading image: {e}")
             return local_path
 
 
@@ -879,29 +892,36 @@ class QwenVideoProvider(VideoProvider):
         self.api_key = settings.QWEN_API_KEY
         self.base_url = "https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/video-generation/video-synthesis"
 
-    def generate_t2v(self, prompt: str, duration: int = 5, resolution: str = '720P', ratio: str = '16:9') -> dict:
-        print(f"Generating t2v using happyhorse-1.1-t2v")
+    def generate_t2v(self, prompt: str, duration: int = 5, resolution: str = '720P', ratio: str = '9:16') -> dict:
+        model = settings.QWEN_T2V_MODEL
+        print(f"Generating t2v using {model}")
+        if settings.DEMO_MODE or not self.api_key:
+            return {"task_id": "mock_task", "status": "FAILED"}
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "X-DashScope-Async": "enable",
             "Content-Type": "application/json"
         }
         data = {
-            "model": "happyhorse-1.1-t2v",
+            "model": model,
             "input": {"prompt": prompt},
             "parameters": {"resolution": resolution, "ratio": ratio, "duration": duration}
         }
         try:
-            resp = httpx.post(self.base_url, headers=headers, json=data)
+            resp = httpx.post(self.base_url, headers=headers, json=data, timeout=30)
             resp.raise_for_status()
             res_json = resp.json()
             return {"task_id": res_json["output"]["task_id"], "status": "PENDING"}
+        except httpx.HTTPStatusError as e:
+            print(f"Error in generate_t2v: {e} — {e.response.text[:300]}")
+            return {"task_id": "mock_task", "status": "FAILED"}
         except Exception as e:
             print(f"Error in generate_t2v: {e}")
             return {"task_id": "mock_task", "status": "FAILED"}
 
     def generate_i2v(self, image_url: str, prompt: str, duration: int = 5) -> dict:
-        print(f"Generating i2v using happyhorse-1.1-i2v")
+        model = settings.QWEN_I2V_MODEL
+        print(f"Generating i2v using {model}")
         if settings.DEMO_MODE or not self.api_key or not image_url:
             return {"task_id": "mock_task", "status": "FAILED"}
         headers = {
@@ -910,15 +930,20 @@ class QwenVideoProvider(VideoProvider):
             "Content-Type": "application/json"
         }
         data = {
-            "model": "happyhorse-1.1-i2v",
-            "input": {"prompt": prompt, "image_url": image_url},
+            "model": model,
+            # HappyHorse/Wan i2v expects the first frame under input.media as a list
+            # of {type: "first_frame", url: ...} objects (verified against the API).
+            "input": {"prompt": prompt, "media": [{"type": "first_frame", "url": image_url}]},
             "parameters": {"duration": duration}
         }
         try:
-            resp = httpx.post(self.base_url, headers=headers, json=data)
+            resp = httpx.post(self.base_url, headers=headers, json=data, timeout=30)
             resp.raise_for_status()
             res_json = resp.json()
             return {"task_id": res_json["output"]["task_id"], "status": "PENDING"}
+        except httpx.HTTPStatusError as e:
+            print(f"Error in generate_i2v: {e} — {e.response.text[:300]}")
+            return {"task_id": "mock_task", "status": "FAILED"}
         except Exception as e:
             print(f"Error in generate_i2v: {e}")
             return {"task_id": "mock_task", "status": "FAILED"}
@@ -930,7 +955,7 @@ class QwenVideoProvider(VideoProvider):
         headers = {"Authorization": f"Bearer {self.api_key}"}
         url = f"https://dashscope-intl.aliyuncs.com/api/v1/tasks/{task_id}"
         try:
-            resp = httpx.get(url, headers=headers)
+            resp = httpx.get(url, headers=headers, timeout=30)
             res_json = resp.json()
             status = res_json["output"]["task_status"]
             if status == "SUCCEEDED":
@@ -939,18 +964,38 @@ class QwenVideoProvider(VideoProvider):
                 return {"status": "FAILED"}
             else:
                 return {"status": "PENDING"}
+        except httpx.TransportError as e:
+            # Transient network problem — keep polling instead of failing the shot.
+            print(f"Transient error polling video task (will retry): {e}")
+            return {"status": "PENDING"}
         except Exception as e:
             print(f"Error polling video task: {e}")
             return {"status": "FAILED"}
 
     def download_video(self, url: str, local_path: str) -> str:
+        # Transient TLS/network failures (e.g. SSL BAD_SIGNATURE) happen on large
+        # OSS downloads; retry with a fresh connection before giving up.
+        last_error = None
+        for attempt in range(3):
+            try:
+                resp = httpx.get(url, timeout=300, follow_redirects=True)
+                resp.raise_for_status()
+                with open(local_path, "wb") as f:
+                    f.write(resp.content)
+                if os.path.getsize(local_path) > 0:
+                    return local_path
+                last_error = "empty file"
+            except Exception as e:
+                last_error = e
+                print(f"Error downloading video (attempt {attempt + 1}/3): {e}")
+        print(f"Video download failed after retries: {last_error}")
+        # Remove any zero-byte partial so callers can detect the failure by size.
         try:
-            resp = httpx.get(url)
-            with open(local_path, "wb") as f:
-                f.write(resp.content)
-            return local_path
-        except Exception:
-            return local_path
+            if os.path.isfile(local_path) and os.path.getsize(local_path) == 0:
+                os.remove(local_path)
+        except OSError:
+            pass
+        return local_path
 
 
 class QwenAudioProvider(AudioProvider):

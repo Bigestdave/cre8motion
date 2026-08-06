@@ -9,6 +9,7 @@ from app.db.session import SessionLocal
 from app.models.episode import Episode
 from app.models.production import ProductionRun
 from app.models.show import Show
+from app.models.system import Artifact
 from app.services.orchestrator import execute_production_pipeline
 
 router = APIRouter(prefix="/api/productions", tags=["Productions"])
@@ -80,6 +81,16 @@ def get_production(production_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Production not found")
     episode = db.query(Episode).filter(Episode.id == run.episode_id).first()
     show = db.query(Show).filter(Show.id == episode.show_id).first() if episode else None
+    # Surface the assembled episode so the Final Review screen can play it.
+    final_video = (
+        db.query(Artifact)
+        .filter(
+            Artifact.production_run_id == run.id,
+            Artifact.artifact_type == "final_video",
+        )
+        .order_by(Artifact.created_at.desc())
+        .first()
+    )
     return {
         "id": run.id,
         "episode_id": run.episode_id,
@@ -97,6 +108,8 @@ def get_production(production_id: str, db: Session = Depends(get_db)):
         "target_duration_seconds": episode.target_duration_seconds if episode else None,
         "show_id": show.id if show else None,
         "show_title": show.title if show else None,
+        "final_video_artifact_id": final_video.id if final_video else None,
+        "final_video_status": final_video.status if final_video else None,
     }
 
 @router.post("/{production_id}/pause")

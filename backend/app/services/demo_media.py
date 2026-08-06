@@ -2,7 +2,9 @@ import os
 import subprocess
 from pathlib import Path
 
-from app.core.storage import get_artifact_path
+from app.core.storage import get_artifact_path, resolve_ffmpeg
+
+FFMPEG = resolve_ffmpeg() or "ffmpeg"
 
 
 def create_stage_image(storage_key: str, label: str, sequence_number: int) -> str:
@@ -17,7 +19,7 @@ def create_stage_image(storage_key: str, label: str, sequence_number: int) -> st
         f"drawtext=text='{label}':fontcolor=white:fontsize=62:x=(w-text_w)/2:y=(h-text_h)/2,"
         f"drawtext=text='Local demo placeholder':fontcolor=white@0.8:fontsize=34:x=(w-text_w)/2:y=h-180"
     )
-    command = ["ffmpeg", "-y", "-f", "lavfi", "-i", filter_graph, "-frames:v", "1", output_path]
+    command = [FFMPEG, "-y", "-f", "lavfi", "-i", filter_graph, "-frames:v", "1", output_path]
     try:
         subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except (FileNotFoundError, subprocess.CalledProcessError):
@@ -44,7 +46,7 @@ def create_stage_video(storage_key: str, label: str, sequence_number: int, durat
         f"drawtext=text='Local demo placeholder':fontcolor=white@0.8:fontsize=34:x=(w-text_w)/2:y=h-180"
     )
     command = [
-        "ffmpeg", "-y", "-f", "lavfi", "-i", filter_graph,
+        FFMPEG, "-y", "-f", "lavfi", "-i", filter_graph,
         "-t", str(max(duration_seconds, 1)), "-pix_fmt", "yuv420p",
         "-c:v", "libx264", output_path,
     ]

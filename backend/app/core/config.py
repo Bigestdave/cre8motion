@@ -11,6 +11,11 @@ class Settings(BaseSettings):
     FRONTEND_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
     # Required in a deployed environment for Qwen image-to-video generation to fetch keyframes.
     PUBLIC_API_BASE_URL: str = ""
+    # Absolute path to the ffmpeg binary; falls back to PATH lookup when empty.
+    FFMPEG_PATH: str = ""
+    # DashScope video model names — override per account if these aren't enabled.
+    QWEN_T2V_MODEL: str = "happyhorse-1.1-t2v"
+    QWEN_I2V_MODEL: str = "happyhorse-1.1-i2v"
 
     @property
     def frontend_origins(self) -> list[str]:

@@ -147,4 +147,8 @@ def compile_video_prompt(shot_spec, show_style=None):
     """Build a motion-focused video prompt."""
     motion = shot_spec.get("motion_prompt", "")
     if not motion:
-        motion = f"Dialogue-free cinematic motion. {motion}. Smooth rendering, temporal consistency."
+        motion = "Dialogue-free cinematic motion. Smooth rendering, temporal consistency."
+    return (
+        f"{motion} Dialogue-free silent acting, smooth cinematic motion, "
+        "temporal consistency between frames, no text, no captions."
+    )

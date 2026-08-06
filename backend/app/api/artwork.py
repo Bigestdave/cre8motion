@@ -1,8 +1,8 @@
 """Show artwork generation: posters and character references created by Qwen Cloud models.
 
 This is part of the autonomous studio pipeline — when a show is created the backend
-generates its poster key art (qwen-image-2.0) and character reference sheets
-(wan2.7-image-pro) rather than requiring uploads.
+generates its poster key art (qwen-image-plus) and character reference sheets
+(wan2.2-t2i-flash) rather than requiring uploads.
 """
 import asyncio
 import os
@@ -99,7 +99,7 @@ def _store_artifact(db: Session, image_url: str, storage_key: str, artifact_type
 
 @router.post("/shows/{show_id}/poster/generate")
 async def generate_show_poster(show_id: str, db: Session = Depends(get_db)):
-    """Generate show key art with qwen-image-2.0 and store it as the show's poster."""
+    """Generate show key art with qwen-image-plus and store it as the show's poster."""
     show = db.query(Show).filter(Show.id == show_id).first()
     if not show:
         raise HTTPException(404, "Show not found")
@@ -135,7 +135,7 @@ def get_show_poster(show_id: str, db: Session = Depends(get_db)):
 
 @router.post("/characters/{character_id}/references/generate")
 async def generate_character_reference(character_id: str, db: Session = Depends(get_db)):
-    """Generate a character reference sheet with wan2.7-image-pro from the canonical description."""
+    """Generate a character reference sheet with wan2.2-t2i-flash from the canonical description."""
     character = db.query(Character).filter(Character.id == character_id).first()
     if not character:
         raise HTTPException(404, "Character not found")
