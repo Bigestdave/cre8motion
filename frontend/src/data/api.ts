@@ -65,6 +65,11 @@ export interface ProductionRun {
   failure_reason?: string | null
   final_video_artifact_id?: string | null
   final_video_status?: string | null
+  show_id?: string | null
+  show_title?: string | null
+  episode_number?: number | null
+  episode_title?: string | null
+  target_duration_seconds?: number | null
 }
 
 export interface ProductionListItem {

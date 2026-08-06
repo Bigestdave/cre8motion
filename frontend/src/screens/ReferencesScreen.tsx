@@ -16,7 +16,7 @@ export function ReferencesScreen() {
   const [shots, setShots] = useState<any[]>([])
   const [characters, setCharacters] = useState<any[]>([])
   const [refsByChar, setRefsByChar] = useState<Record<string, any[]>>({})
-  const [generating, setGenerating] = useState<Record<string, boolean>>()
+  const [generating, setGenerating] = useState<Record<string, boolean>>({})
   const { lastEvent } = useProductionEvents(productionId)
 
   // Load production → show → characters → their references
