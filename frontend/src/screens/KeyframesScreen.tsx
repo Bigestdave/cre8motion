@@ -4,8 +4,207 @@ import { AppShell } from '../components/AppShell'
 import { RightPanel, ScoreBar } from '../components/RightPanel'
 import { ThumbShotStrip, Thumb, type StripStatuses } from '../components/ShotStrip'
 import { SparkleIcon, PersonIcon, SunIcon, WaveIcon, HandIcon } from '../components/icons'
-import { getProductionShots } from '../data/api'
+import { getProductionShots, retryShot, getShotAttempts, approveAttempt, pauseProduction } from '../data/api'
 import { useProductionEvents } from '../hooks/useProductionEvents'
+
+const recommendations = [
+  { icon: PersonIcon, label: 'Preserve the', sub: 'current character identity' },
+  { icon: SunIcon, label: 'Keep the', sub: 'approved lighting' },
+  { icon: WaveIcon, label: 'Reduce', sub: 'background motion' },
+  { icon: HandIcon, label: 'Simplify the', sub: 'hand movement' },
+]
+
+export function KeyframesScreen() {
+  const [searchParams] = useSearchParams()
+  const productionId = searchParams.get('productionId')
+
+  const [shots, setShots] = useState<any[]>([])
+  const [selected, setSelected] = useState<string>('')
+  const [acting, setActing] = useState(false)
+
+  const { lastEvent } = useProductionEvents(productionId)
+
+  useEffect(() => {
+    if (!productionId) return
+    getProductionShots(productionId).then(data => {
+      setShots(data)
+      if (!selected && data.length > 0) {
+        const activeShot = data.find((s: any) => s.status.includes('keyframe_')) || data[0]
+        setSelected(activeShot.id)
+      }
+    }).catch(err => console.error("Failed to load shots", err))
+  }, [productionId, lastEvent])
+
+  const statuses: StripStatuses = useMemo(() => {
+    const st: StripStatuses = {}
+    shots.forEach(s => {
+      if (s.id === selected) { st[s.id] = 'active'; return }
+      if (s.status.includes('keyframe_approved') || s.status.includes('video_')) st[s.id] = 'approved'
+      else if (s.status.includes('keyframe_retry') || s.status.includes('needs_attention')) st[s.id] = 'warning'
+      else if (s.status.includes('keyframe_')) st[s.id] = 'generating'
+      else st[s.id] = 'pending'
+    })
+    return st
+  }, [shots, selected])
+
+  const selectedShot = shots.find(s => s.id === selected)
+  const isFailed = selectedShot?.status.includes('retry') || selectedShot?.status.includes('needs_attention')
+  const numStr = selectedShot ? String(selectedShot.sequence_number).padStart(2, '0') : ''
+
+  const handleApprove = async () => {
+    if (!selected || acting) return
+    setActing(true)
+    try {
+      // Approve the latest generation attempt for this shot.
+      const attempts = await getShotAttempts(selected) as any[]
+      if (attempts?.length) {
+        const latest = attempts[attempts.length - 1]
+        await approveAttempt(selected, latest.id)
+      } else {
+        // No attempts recorded — just mark via retry-as-approve (best-effort).
+        await retryShot(selected)
+      }
+      // Refresh shots list to reflect approved status.
+      if (productionId) setShots(await getProductionShots(productionId))
+    } catch (e) { console.error(e) }
+    finally { setActing(false) }
+  }
+
+  const handleRetry = async () => {
+    if (!selected || acting) return
+    setActing(true)
+    try {
+      await retryShot(selected)
+      if (productionId) setShots(await getProductionShots(productionId))
+    } catch (e) { console.error(e) }
+    finally { setActing(false) }
+  }
+
+  const handlePause = async () => {
+    if (!productionId || acting) return
+    setActing(true)
+    try { await pauseProduction(productionId) }
+    catch (e) { console.error(e) }
+    finally { setActing(false) }
+  }
+
+  return (
+    <AppShell
+      active="Keyframes"
+      sidebarOverrides={{ Keyframes: isFailed ? 'warning' : 'active' }}
+      panel={
+        <RightPanel
+          defaultTab="Quality"
+          render={(tab) =>
+            tab === 'Quality' && selectedShot ? (
+              <div>
+                <ScoreBar label="AI review" score={isFailed ? 71 : 89} tone={isFailed ? "warn" : undefined} />
+                <ScoreBar label="Character identity" score={94} />
+                <ScoreBar label="Style consistency" score={91} />
+                <ScoreBar label="Composition" score={83} />
+                <ScoreBar label="Action accuracy" score={isFailed ? 48 : 85} tone={isFailed ? "danger" : undefined} />
+                {isFailed && (
+                  <div className="mt-8 border-t border-line-soft pt-6">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-[16px] font-semibold text-danger">Failed check</p>
+                        <p className="pt-3 text-[14.5px] leading-relaxed text-ink-2">
+                          Keyframe quality did not meet the <br />required threshold.
+                        </p>
+                      </div>
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-danger text-[16px] font-bold text-danger">!</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : null
+          }
+        />
+      }
+      strip={<ThumbShotStrip shots={shots} statuses={statuses} selected={selected} onSelect={setSelected} variant="name-sec" />}
+    >
+      <div className="p-8">
+        {selectedShot ? (
+          <>
+            <h1 className="text-[30px] font-bold tracking-tight">
+              {isFailed ? `Shot ${numStr} needs another attempt` : `Reviewing Shot ${numStr}`}
+            </h1>
+            <p className="pt-2 text-[15px] text-ink-2">
+              {isFailed ? 'The AI detected issues with the generated keyframe.' : 'Checking character identity and style consistency.'}
+            </p>
+
+            <div className="mt-7 grid grid-cols-2 gap-6">
+              <div>
+                <p className="pb-3 text-[14.5px] text-ink-2">Current attempt</p>
+                <Thumb shotId={`S${numStr}`} artifactId={selectedShot.approved_keyframe_artifact_id} className="aspect-[16/10.5] w-full rounded-lg" />
+              </div>
+              <div>
+                <p className="pb-3 text-[14.5px] text-ink-2">Approved storyboard</p>
+                <Thumb shotId={`S${numStr}`} artifactId={selectedShot.approved_storyboard_artifact_id} className="aspect-[16/10.5] w-full rounded-lg opacity-70" />
+              </div>
+            </div>
+
+            {isFailed && (
+              <div className="mt-6 rounded-xl border border-line-soft bg-raised p-5">
+                <p className="flex items-center gap-2.5 pb-4 text-[15px] font-semibold">
+                  <SparkleIcon size={17} />
+                  Cre8Motion recommends
+                </p>
+                <div className="grid grid-cols-4 gap-4">
+                  {recommendations.map(({ icon: Icon, label, sub }) => (
+                    <div key={sub} className="flex items-start gap-3">
+                      <Icon size={20} className="mt-0.5 shrink-0 text-ink-2" />
+                      <p className="text-[13.5px] leading-snug text-ink-2">{label}<br />{sub}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-6 flex items-center gap-4">
+              {isFailed ? (
+                <>
+                  <button
+                    onClick={handleApprove}
+                    disabled={acting}
+                    className="rounded-lg border border-line px-6 py-3 text-[15px] font-medium transition-colors hover:bg-raised disabled:opacity-50"
+                  >
+                    {acting ? '…' : 'Use current attempt'}
+                  </button>
+                  <button
+                    onClick={handleRetry}
+                    disabled={acting}
+                    className="rounded-lg bg-accent px-7 py-3 text-[15px] font-semibold text-accent-ink transition-colors hover:bg-accent-strong disabled:opacity-50"
+                  >
+                    {acting ? '…' : 'Accept recommended retry'}
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={handleApprove}
+                  disabled={acting}
+                  className="rounded-lg bg-ink px-7 py-3 text-[15px] font-semibold text-app transition-colors hover:bg-ink-2 disabled:opacity-50"
+                >
+                  {acting ? '…' : 'Approve Keyframe'}
+                </button>
+              )}
+              <button
+                onClick={handlePause}
+                disabled={acting}
+                className="px-4 py-3 text-[15px] text-ink-2 transition-colors hover:text-ink disabled:opacity-50"
+              >
+                Pause production
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center justify-center h-full pt-20 text-ink-2">Loading keyframes...</div>
+        )}
+      </div>
+    </AppShell>
+  )
+}
+
 
 const recommendations = [
   { icon: PersonIcon, label: 'Preserve the', sub: 'current character identity' },

@@ -5,7 +5,7 @@ import { RightPanel, KV, ScoreBar } from '../components/RightPanel'
 import { ThumbShotStrip, type StripStatuses } from '../components/ShotStrip'
 import { VideoPlayer } from '../components/VideoPlayer'
 import { ExportModal } from '../components/ExportModal'
-import { getProduction, getProductionShots } from '../data/api'
+import { getProduction, getProductionShots, approveProduction } from '../data/api'
 import type { ProductionRun, ProductionShot } from '../data/api'
 
 export function FinalReviewScreen() {
@@ -16,6 +16,7 @@ export function FinalReviewScreen() {
   const [shots, setShots] = useState<ProductionShot[]>([])
   const [selected, setSelected] = useState<string>('')
   const [exportOpen, setExportOpen] = useState(false)
+  const [approving, setApproving] = useState(false)
 
   useEffect(() => {
     if (!productionId) return
@@ -84,10 +85,20 @@ export function FinalReviewScreen() {
                       Request changes
                     </button>
                     <button
-                      onClick={() => setExportOpen(true)}
-                      className="w-full rounded-xl bg-ink py-3.5 text-[15px] font-semibold text-app transition-colors hover:bg-ink-2"
+                      disabled={approving || production.status === 'complete'}
+                      onClick={async () => {
+                        if (!productionId) return
+                        setApproving(true)
+                        try {
+                          await approveProduction(productionId)
+                          setProduction(p => p ? { ...p, status: 'complete' } : p)
+                          setExportOpen(true)
+                        } catch (e) { console.error(e) }
+                        finally { setApproving(false) }
+                      }}
+                      className="w-full rounded-xl bg-ink py-3.5 text-[15px] font-semibold text-app transition-colors hover:bg-ink-2 disabled:opacity-60"
                     >
-                      Approve episode
+                      {approving ? 'Approving…' : production.status === 'complete' ? 'Episode approved ✓' : 'Approve episode'}
                     </button>
                   </div>
                 </div>

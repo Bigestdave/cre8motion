@@ -2,12 +2,17 @@ import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Pause } from './icons'
 import { getProductionDetail, pauseProduction, resumeProduction, type ProductionDetail } from '../data/api'
-import { prettyStage } from '../data/pipeline'
+import { prettyStage, stageScreen, stageStep } from '../data/pipeline'
+import type { StepName } from '../data/shots'
 
 interface TopBarProps {
   status?: string
   showElapsed?: boolean
   showPause?: boolean
+  /** Live production, supplied by AppShell. If omitted, TopBar self-fetches. */
+  production?: ProductionDetail | null
+  /** The sidebar step of the screen currently shown, to hide Continue when already live. */
+  activeStep?: StepName
 }
 
 function elapsedSince(iso?: string | null): string {
@@ -20,20 +25,23 @@ function elapsedSince(iso?: string | null): string {
   return `${m}:${String(s).padStart(2, '0')} elapsed`
 }
 
-export function TopBar({ showElapsed = true, showPause = true }: TopBarProps) {
+export function TopBar({ showElapsed = true, showPause = true, production: productionProp, activeStep }: TopBarProps) {
   const [searchParams] = useSearchParams()
   const productionId = searchParams.get('productionId')
-  const [production, setProduction] = useState<ProductionDetail | null>(null)
+  const [selfProduction, setSelfProduction] = useState<ProductionDetail | null>(null)
+  const production = productionProp ?? selfProduction
   const [tick, setTick] = useState(0)
   const [pausing, setPausing] = useState(false)
 
+  // Only self-fetch when AppShell didn't supply the production (backward compat).
   useEffect(() => {
+    if (productionProp !== undefined) return
     if (!productionId) return
-    const load = () => getProductionDetail(productionId).then(setProduction).catch(console.error)
+    const load = () => getProductionDetail(productionId).then(setSelfProduction).catch(console.error)
     load()
     const poll = setInterval(load, 10000)
     return () => clearInterval(poll)
-  }, [productionId])
+  }, [productionId, productionProp])
 
   // Re-render elapsed time every second while producing
   useEffect(() => {
@@ -45,13 +53,20 @@ export function TopBar({ showElapsed = true, showPause = true }: TopBarProps) {
   const isPaused = (production?.status || '').toLowerCase() === 'paused'
   const isDone = ['complete', 'failed', 'ready_for_review'].includes((production?.status || '').toLowerCase())
 
+  // Continue jumps to the live stage's screen; hidden when already viewing it.
+  const liveStep = stageStep(production?.current_stage)
+  const showContinue = Boolean(productionId) && !isDone && activeStep !== undefined && activeStep !== liveStep
+  const continueTo = production?.current_stage
+    ? `${stageScreen(production.current_stage)}?productionId=${encodeURIComponent(productionId!)}`
+    : '#'
+
   const handlePauseResume = async () => {
     if (!productionId) return
     setPausing(true)
     try {
       if (isPaused) await resumeProduction(productionId)
       else await pauseProduction(productionId)
-      setProduction(await getProductionDetail(productionId))
+      setSelfProduction(await getProductionDetail(productionId))
     } catch (e) {
       console.error(e)
     } finally {
@@ -106,6 +121,15 @@ export function TopBar({ showElapsed = true, showPause = true }: TopBarProps) {
           <span className="text-[15px] font-normal text-ink-2">
             {production?.completed_at ? 'Finished' : elapsedSince(production?.started_at)}
           </span>
+        )}
+
+        {showContinue && (
+          <Link
+            to={continueTo}
+            className="flex h-[36.5px] items-center gap-2 rounded-md bg-accent px-[17px] text-[15px] font-medium text-white transition-opacity hover:opacity-90"
+          >
+            Continue → {prettyStage(production?.current_stage)}
+          </Link>
         )}
 
         {showPause && !isDone && (

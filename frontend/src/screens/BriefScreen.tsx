@@ -1,45 +1,45 @@
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { RightPanel, KV } from '../components/RightPanel'
-import { CheckCircle, ChevronDown, CircleOutline } from '../components/icons'
-import { PeopleIcon, ClockIcon, PhoneIcon, WandIcon, LoopIcon, FramePlaceholder } from '../components/icons2'
-import { shots } from '../data/shots'
-
-const briefRows = [
-  { icon: PeopleIcon, label: 'Characters', value: 'Lumi, Kai' },
-  { icon: ClockIcon, label: 'Target duration', value: '45 seconds' },
-  { icon: PhoneIcon, label: 'Format', value: 'Vertical · 9:16' },
-  { icon: WandIcon, label: 'Inherited style', value: 'Polished 3D v2' },
-  { icon: LoopIcon, label: 'Continuity', value: 'Version 4 · Through Episode 04' },
-]
-
-const inheritedAssets = [
-  'Character references v3',
-  'Polished 3D style v2',
-  'Continuity v4',
-  'Audio profile v1',
-]
-
-/** Estimated (empty) shot strip — dashed placeholder frames */
-function EstimatedStrip() {
-  return (
-    <div className="grid grid-cols-8 gap-3">
-      {shots.map((s) => (
-        <div key={s.id} className="rounded-xl border border-line-soft bg-raised p-2 pb-2.5">
-          <div className="mb-2 flex aspect-[16/10] w-full items-center justify-center rounded-md border border-dashed border-line-strong">
-            <FramePlaceholder />
-          </div>
-          <div className="flex items-center justify-between px-1">
-            <span className="text-[13.5px] font-semibold">{s.id}</span>
-            <CircleOutline size={15} />
-          </div>
-          <p className="px-1 pt-0.5 text-[12.5px] text-ink-3">Estimated</p>
-        </div>
-      ))}
-    </div>
-  )
-}
+import { CheckCircle, CircleOutline } from '../components/icons'
+import { PeopleIcon, ClockIcon, PhoneIcon, FramePlaceholder } from '../components/icons2'
+import { getProduction, getProductionShots, listCharacters } from '../data/api'
+import { useProductionEvents } from '../hooks/useProductionEvents'
 
 export function BriefScreen() {
+  const [searchParams] = useSearchParams()
+  const productionId = searchParams.get('productionId')
+
+  const [production, setProduction] = useState<any>(null)
+  const [shots, setShots] = useState<any[]>([])
+  const [characters, setCharacters] = useState<any[]>([])
+  const { lastEvent } = useProductionEvents(productionId)
+
+  useEffect(() => {
+    if (!productionId) return
+    getProduction(productionId)
+      .then(async (prod) => {
+        setProduction(prod)
+        if (prod.show_id) {
+          listCharacters(prod.show_id).then(setCharacters).catch(console.error)
+        }
+      })
+      .catch(console.error)
+    getProductionShots(productionId).then(setShots).catch(console.error)
+  }, [productionId, lastEvent])
+
+  const charNames = characters.map((c: any) => c.name).join(', ') || '…'
+  const episodeLabel = production?.episode_number
+    ? `Episode ${String(production.episode_number).padStart(2, '0')} · ${production.episode_title || ''}`
+    : '…'
+
+  const briefRows = [
+    { icon: PeopleIcon, label: 'Characters', value: charNames },
+    { icon: ClockIcon, label: 'Target duration', value: production?.target_duration_seconds ? `${production.target_duration_seconds} seconds` : '45 seconds' },
+    { icon: PhoneIcon, label: 'Format', value: 'Vertical · 9:16' },
+  ]
+
   return (
     <AppShell
       active="Brief"
@@ -49,26 +49,32 @@ export function BriefScreen() {
             tab === 'Details' ? (
               <div>
                 <h2 className="pb-3 text-[17px] font-semibold">Production context</h2>
-                <KV label="Show" value="Fruitful Secrets" />
-                <KV label="Episode" value={<>05 <span className="px-1 text-ink-3">·</span> The Moon Necklace</>} />
-                <KV label="Created" value="Today, 08:42" />
-                <KV label="Last updated" value="Just now" />
-
-                <h3 className="border-t border-line-soft pb-3 pt-6 text-[16px] font-semibold">Inherited assets</h3>
-                <ul className="flex flex-col gap-3">
-                  {inheritedAssets.map((a) => (
-                    <li key={a} className="flex items-center gap-3 text-[14.5px] text-ink-2">
-                      <CheckCircle size={17} />
-                      {a}
-                    </li>
-                  ))}
-                </ul>
+                <KV label="Show" value={production?.show_title || '…'} />
+                <KV label="Episode" value={episodeLabel} />
+                <KV label="Stage" value={production?.current_stage || '…'} />
               </div>
             ) : null
           }
         />
       }
-      strip={<EstimatedStrip />}
+      strip={
+        <div className="grid grid-cols-8 gap-3">
+          {(shots.length > 0 ? shots : Array.from({ length: 7 })).map((s: any, i) => (
+            <div key={s?.id || i} className="rounded-xl border border-line-soft bg-raised p-2 pb-2.5">
+              <div className="mb-2 flex aspect-[16/10] w-full items-center justify-center rounded-md border border-dashed border-line-strong">
+                <FramePlaceholder />
+              </div>
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[13.5px] font-semibold">
+                  {s?.sequence_number ? `S${String(s.sequence_number).padStart(2, '0')}` : `S${String(i + 1).padStart(2, '0')}`}
+                </span>
+                <CircleOutline size={15} />
+              </div>
+              <p className="px-1 pt-0.5 text-[12.5px] text-ink-3">Estimated</p>
+            </div>
+          ))}
+        </div>
+      }
     >
       <div className="p-8">
         <div className="flex items-center gap-4">
@@ -80,16 +86,7 @@ export function BriefScreen() {
         </div>
         <p className="pt-2 text-[15px] text-ink-2">All required episode information is ready.</p>
 
-        <h2 className="pt-7 text-[19px] font-semibold">
-          Episode 05 <span className="px-1.5 text-ink-3">·</span> The Moon Necklace
-        </h2>
-
-        <p className="pt-5 text-[14.5px] text-ink-2">Story:</p>
-        <p className="max-w-[560px] pt-1.5 text-[15px] leading-relaxed">
-          Lumi discovers a moon-shaped necklace beneath the kitchen table.
-          When Kai enters, Lumi hides it, but the damaged window reveals that
-          someone else has been inside.
-        </p>
+        <h2 className="pt-7 text-[19px] font-semibold">{episodeLabel}</h2>
 
         <div className="mt-6 max-w-[820px]">
           {briefRows.map(({ icon: Icon, label, value }) => (
@@ -100,11 +97,6 @@ export function BriefScreen() {
             </div>
           ))}
         </div>
-
-        <button className="mt-6 flex w-full max-w-[820px] items-center gap-3 rounded-xl border border-line px-4 py-3.5 text-[15px] transition-colors hover:bg-raised">
-          <ChevronDown className="text-ink-3" />
-          View original episode input
-        </button>
       </div>
     </AppShell>
   )

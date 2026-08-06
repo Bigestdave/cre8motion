@@ -1,14 +1,46 @@
+import { useState, useEffect, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { RightPanel, KV } from '../components/RightPanel'
-import { ThumbShotStrip, Thumb, type StripStatuses } from '../components/ShotStrip'
-import { Waveform } from '../components/Waveform'
+import { ThumbShotStrip, type StripStatuses } from '../components/ShotStrip'
 import { Checklist } from '../components/Checklist'
-import { MusicNote, ChevronRight, DocIcon } from '../components/icons'
-import { shots } from '../data/shots'
+import { DocIcon } from '../components/icons'
+import { getProduction, getProductionShots } from '../data/api'
+import { useProductionEvents } from '../hooks/useProductionEvents'
 
-const statuses: StripStatuses = Object.fromEntries(shots.map((s) => [s.id, 'approved'])) as StripStatuses
+function formatDuration(sec: number) {
+  const m = Math.floor(sec / 60)
+  const s = Math.floor(sec % 60)
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+}
 
 export function AssemblyScreen() {
+  const [searchParams] = useSearchParams()
+  const productionId = searchParams.get('productionId')
+
+  const [production, setProduction] = useState<any>(null)
+  const [shots, setShots] = useState<any[]>([])
+  const { lastEvent } = useProductionEvents(productionId)
+
+  useEffect(() => {
+    if (!productionId) return
+    getProduction(productionId).then(setProduction).catch(console.error)
+    getProductionShots(productionId).then(setShots).catch(console.error)
+  }, [productionId, lastEvent])
+
+  const statuses: StripStatuses = useMemo(() => {
+    const st: StripStatuses = {}
+    shots.forEach(s => {
+      st[s.id] = s.approved_video_artifact_id ? 'approved' : 'pending'
+    })
+    return st
+  }, [shots])
+
+  const approvedClips = shots.filter(s => s.approved_video_artifact_id).length
+  const totalDuration = shots.reduce((sum, s) => sum + (s.duration_seconds || 0), 0)
+  const isComplete = production?.current_stage === 'READY_FOR_REVIEW' || production?.current_stage === 'FINAL_QC'
+  const hasFinalVideo = Boolean(production?.final_video_artifact_id)
+
   return (
     <AppShell
       active="Assembly"
@@ -21,78 +53,71 @@ export function AssemblyScreen() {
                 <KV label="Resolution" value="1080 × 1920" />
                 <KV label="Frame rate" value="24 fps" />
                 <KV label="Format" value={<>MP4 <span className="px-1 text-ink-3">·</span> H.264</>} />
-                <KV label="Duration" value="00:45" />
-                <KV label="Audio" value={<>AAC <span className="px-1 text-ink-3">·</span> Stereo</>} />
-                <KV label="Estimated size" value="62 MB" />
+                <KV label="Duration" value={totalDuration ? formatDuration(totalDuration) : '…'} />
+                <KV label="Clips assembled" value={`${approvedClips} / ${shots.length}`} />
 
                 <button className="mt-9 flex w-full items-center justify-between rounded-xl border border-line px-4 py-3.5 text-[15px] transition-colors hover:bg-raised">
                   <span className="flex items-center gap-3">
                     <DocIcon className="text-ink-2" />
                     View encoding details
                   </span>
-                  <ChevronRight className="text-ink-3" />
                 </button>
               </div>
             ) : null
           }
         />
       }
-      strip={<ThumbShotStrip statuses={statuses} variant="name-time" />}
+      strip={<ThumbShotStrip shots={shots} statuses={statuses} variant="name-time" />}
     >
       <div className="p-8">
         <h1 className="text-[32px] font-bold tracking-tight">Assembling final episode</h1>
-        <p className="pt-2 text-[15px] text-ink-2">Cre8Motion is combining the approved video and audio.</p>
+        <p className="pt-2 text-[15px] text-ink-2">
+          {hasFinalVideo
+            ? 'Assembly complete — final episode is ready for review.'
+            : `Combining ${approvedClips} approved clips into the final cut.`}
+        </p>
 
-        <div className="mt-7 flex items-end justify-between">
-          <p className="text-[13px] font-semibold tracking-[0.1em] text-ink-3">VIDEO</p>
-          <p className="text-[14.5px] font-medium">00:45 total</p>
-        </div>
-
-        <div className="mt-3 flex overflow-hidden rounded-lg border border-line-soft">
-          {shots.map((s) => (
-            <div key={s.id} className="relative min-w-0 border-r border-line-soft last:border-r-0" style={{ flex: s.sec }}>
-              <Thumb shotId={s.id} className="h-[104px] w-full rounded-none" />
-              <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent px-2 pb-1.5 pt-4">
-                <p className="text-[12.5px] font-semibold">{s.id}</p>
-                <p className="text-[11.5px] text-ink-2">{s.time}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="mt-2 flex justify-between text-[13px] text-ink-3">
-          <span>00:00</span><span>00:15</span><span>00:30</span><span>00:45</span>
-        </div>
-
-        <p className="pt-6 text-[13px] font-semibold tracking-[0.1em] text-ink-3">AUDIO</p>
-        <div className="relative mt-3 rounded-xl border border-line-soft bg-raised px-4 py-4">
-          <div className="flex items-center gap-4">
-            <div className="flex w-[130px] shrink-0 items-center gap-3">
-              <MusicNote size={16} className="text-ink-2" />
-              <span className="text-[14.5px]">Master mix</span>
-            </div>
-            <div className="min-w-0 flex-1">
-              <Waveform seed={31} height={42} bars={200} />
-            </div>
+        <div className="mt-7">
+          <div className="flex items-end justify-between">
+            <p className="text-[13px] font-semibold tracking-[0.1em] text-ink-3">VIDEO CLIPS</p>
+            <p className="text-[14.5px] font-medium">{totalDuration ? formatDuration(totalDuration) : '…'} total</p>
           </div>
-          {/* playhead at 00:22 (~49%) */}
-          <span className="absolute top-[-10px] bottom-[-4px] left-[49%] w-px bg-ink">
-            <span className="absolute -top-1 left-1/2 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-ink" />
-          </span>
+
+          {shots.length > 0 && (
+            <div className="mt-3 flex overflow-hidden rounded-lg border border-line-soft">
+              {shots.map((s) => {
+                const num = String(s.sequence_number).padStart(2, '0')
+                const approved = Boolean(s.approved_video_artifact_id)
+                return (
+                  <div
+                    key={s.id}
+                    className="relative min-w-0 border-r border-line-soft last:border-r-0"
+                    style={{ flex: s.duration_seconds || 5 }}
+                  >
+                    <div className={`h-[104px] w-full rounded-none ${approved ? 'bg-accent/20' : 'bg-raised-2'} flex items-center justify-center`}>
+                      <span className={`text-[13px] font-semibold ${approved ? 'text-accent' : 'text-ink-4'}`}>S{num}</span>
+                    </div>
+                    <div className="absolute bottom-0 inset-x-0 px-1.5 pb-1">
+                      <p className="text-[11px] text-ink-3">{s.duration_seconds ? `${s.duration_seconds}s` : ''}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
-        <p className="pt-2 text-center text-[13px] text-ink-2" style={{ paddingRight: '2%' }}>00:22</p>
 
         <div className="mt-6 grid grid-cols-2 gap-8 border-t border-line-soft pt-6">
           <Checklist
             items={[
-              { label: 'Video clips normalized', state: 'done' },
-              { label: 'Sound effects aligned', state: 'done' },
-              { label: 'Episode audio mixed', state: 'done' },
+              { label: 'Video clips approved', state: approvedClips > 0 ? 'done' : 'todo' },
+              { label: `${approvedClips} of ${shots.length} clips ready`, state: approvedClips === shots.length && shots.length > 0 ? 'done' : 'active' },
             ]}
           />
           <Checklist
             items={[
-              { label: 'Encoding final MP4', state: 'active' },
-              { label: 'Running final technical review', state: 'todo' },
+              { label: 'Encoding final MP4', state: hasFinalVideo ? 'done' : isComplete ? 'active' : 'todo' },
+              { label: 'Ready for review', state: isComplete ? 'done' : 'todo' },
             ]}
           />
         </div>

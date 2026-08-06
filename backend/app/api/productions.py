@@ -117,17 +117,34 @@ def pause_production(production_id: str, db: Session = Depends(get_db)):
     run = db.query(ProductionRun).filter(ProductionRun.id == production_id).first()
     if not run:
         raise HTTPException(404, "Production not found")
-    run.current_stage = "PAUSED"
+    # Only mark status paused — keep current_stage intact so resume knows where
+    # the run actually is (previously this clobbered current_stage to "PAUSED").
+    run.status = "paused"
     db.commit()
-    return {"message": "Production paused"}
+    return {"message": "Production paused", "current_stage": run.current_stage}
 
 @router.post("/{production_id}/resume")
 def resume_production(production_id: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     run = db.query(ProductionRun).filter(ProductionRun.id == production_id).first()
     if not run:
         raise HTTPException(status_code=404, detail="Production not found")
-    run.current_stage = "QUEUED"
-    run.status = "queued"
+    # Nothing to resume if the run already finished.
+    if (run.status or "").lower() in ("complete", "needs_review") or run.current_stage in ("READY_FOR_REVIEW", "FINAL_QC"):
+        return {"message": "Production already complete", "current_stage": run.current_stage}
+    run.status = "in_production"
     db.commit()
+    # Re-kick the pipeline; it is idempotent per stage (re-generates from the
+    # current stage's inputs) and validates transitions from run.current_stage.
     background_tasks.add_task(asyncio.run, execute_production_pipeline(run.id))
-    return {"message": "Production resumed"}
+    return {"message": "Production resumed", "current_stage": run.current_stage}
+
+
+@router.post("/{production_id}/approve")
+def approve_production(production_id: str, db: Session = Depends(get_db)):
+    """Mark a reviewed episode as approved/complete (Final Review 'Approve episode')."""
+    run = db.query(ProductionRun).filter(ProductionRun.id == production_id).first()
+    if not run:
+        raise HTTPException(404, "Production not found")
+    run.status = "complete"
+    db.commit()
+    return {"message": "Episode approved", "status": run.status}

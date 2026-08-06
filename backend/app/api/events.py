@@ -5,8 +5,13 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.models.system import WorkflowEvent
+from app.models.production import ProductionRun
 
 router = APIRouter(prefix="/api", tags=["Events"])
+
+# Event types that mean the run has reached a terminal state — the SSE stream
+# sends a final message and closes instead of polling the DB forever.
+TERMINAL_EVENT_TYPES = {"production_completed", "production_failed"}
 
 def get_db():
     db = SessionLocal()
@@ -54,11 +59,11 @@ async def stream_events(production_id: str):
                     WorkflowEvent.production_run_id == production_id
                 ).order_by(WorkflowEvent.created_at)
                 if last_id:
-                    # Get events newer than last seen
                     last_event = db.query(WorkflowEvent).filter(WorkflowEvent.id == last_id).first()
                     if last_event:
                         query = query.filter(WorkflowEvent.created_at > last_event.created_at)
                 events = query.all()
+                terminal = False
                 for event in events:
                     last_id = event.id
                     data = {
@@ -69,10 +74,22 @@ async def stream_events(production_id: str):
                         "shot_id": event.shot_id
                     }
                     yield f"data: {json.dumps(data)}\n\n"
+                    if event.event_type in TERMINAL_EVENT_TYPES:
+                        terminal = True
+                # Also stop if the run's DB status is terminal (e.g. resumed runs
+                # that completed without a fresh production_completed event).
+                if not terminal:
+                    run = db.query(ProductionRun).filter(
+                        ProductionRun.id == production_id
+                    ).first()
+                    if run and (run.status or "").lower() in ("complete", "needs_review", "failed"):
+                        terminal = True
             finally:
                 db.close()
+            if terminal:
+                break
             await asyncio.sleep(2)
-    
+
     return StreamingResponse(
         event_generator(),
         media_type="text/event-stream",

@@ -1,40 +1,66 @@
+import { useState, useEffect, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { RightPanel, KV } from '../components/RightPanel'
-import { ThumbShotStrip, Thumb, type StripStatuses } from '../components/ShotStrip'
+import { ThumbShotStrip, type StripStatuses } from '../components/ShotStrip'
 import { Checklist } from '../components/Checklist'
-import { ChevronRight, Spinner } from '../components/icons'
-
-const statuses: StripStatuses = {
-  S01: 'approved', S02: 'approved', S03: 'approved', S04: 'approved',
-  S05: 'approved', S06: 'approved', S07: 'generating', S08: 'generating',
-}
-
-interface RefCardProps {
-  thumbId: string
-  title: string
-  subtitle: React.ReactNode
-  selected?: boolean
-  generating?: boolean
-}
-
-function RefCard({ thumbId, title, subtitle, selected, generating }: RefCardProps) {
-  return (
-    <button
-      className={`flex w-full items-center gap-4 rounded-xl border p-3 text-left transition-colors ${
-        selected ? 'border-accent bg-raised' : 'border-line-soft bg-raised hover:border-line'
-      }`}
-    >
-      <Thumb shotId={thumbId} className="h-[72px] w-[104px] shrink-0" />
-      <div className="flex-1">
-        <p className="text-[16px] font-semibold">{title}</p>
-        <p className="pt-1 text-[14px] text-ink-2">{subtitle}</p>
-      </div>
-      {generating ? <Spinner size={18} /> : <ChevronRight className="text-ink-3" />}
-    </button>
-  )
-}
+import { Spinner } from '../components/icons'
+import { getProduction, getProductionShots, listCharacters, listCharacterReferences, generateCharacterReference, getArtifactDownloadUrl } from '../data/api'
+import { useProductionEvents } from '../hooks/useProductionEvents'
 
 export function ReferencesScreen() {
+  const [searchParams] = useSearchParams()
+  const productionId = searchParams.get('productionId')
+
+  const [production, setProduction] = useState<any>(null)
+  const [shots, setShots] = useState<any[]>([])
+  const [characters, setCharacters] = useState<any[]>([])
+  const [refsByChar, setRefsByChar] = useState<Record<string, any[]>>({})
+  const [generating, setGenerating] = useState<Record<string, boolean>>()
+  const { lastEvent } = useProductionEvents(productionId)
+
+  // Load production → show → characters → their references
+  useEffect(() => {
+    if (!productionId) return
+    getProduction(productionId)
+      .then(async (prod) => {
+        setProduction(prod)
+        if (!prod.show_id) return
+        const chars = await listCharacters(prod.show_id)
+        setCharacters(chars)
+        const map: Record<string, any[]> = {}
+        await Promise.all(
+          chars.map(async (c: any) => {
+            try { map[c.id] = await listCharacterReferences(c.id) }
+            catch { map[c.id] = [] }
+          })
+        )
+        setRefsByChar(map)
+      })
+      .catch(console.error)
+    getProductionShots(productionId).then(setShots).catch(console.error)
+  }, [productionId, lastEvent])
+
+  const statuses: StripStatuses = useMemo(() => {
+    const st: StripStatuses = {}
+    shots.forEach(s => { st[s.id] = s.approved_storyboard_artifact_id ? 'approved' : 'pending' })
+    return st
+  }, [shots])
+
+  const totalRefs = Object.values(refsByChar).reduce((n, refs) => n + refs.length, 0)
+  const charsReady = characters.filter(c => (refsByChar[c.id]?.length ?? 0) > 0).length
+
+  const handleGenerate = async (characterId: string) => {
+    if (generating[characterId]) return
+    setGenerating(prev => ({ ...prev, [characterId]: true }))
+    try {
+      await generateCharacterReference(characterId)
+      const refs = await listCharacterReferences(characterId)
+      setRefsByChar(prev => ({ ...prev, [characterId]: refs }))
+    } catch (e) { console.error(e) }
+    finally { setGenerating(prev => ({ ...prev, [characterId]: false })) }
+  }
+
   return (
     <AppShell
       active="References"
@@ -43,67 +69,87 @@ export function ReferencesScreen() {
           render={(tab) =>
             tab === 'Details' ? (
               <div>
-                <h2 className="pb-4 text-[18px] font-semibold">
-                  Garden <span className="px-1 text-ink-3">·</span> Evening view
-                </h2>
-                <KV label="Status" value={<span className="flex items-center gap-2 font-medium text-accent">Generating <Spinner size={15} /></span>} />
-                <KV label="Required for" value="Shots 07 and 08" />
-                <KV label="Source" value="Approved garden reference" />
-                <KV label="Transformation" value="Evening lighting and wider camera angle" />
-
-                <h3 className="pb-3 pt-6 text-[16px] font-semibold">Continuity constraints</h3>
-                <ul className="flex flex-col gap-2.5">
-                  {['Preserve stone pathway', 'Keep damaged west fence visible', 'Match Episode 03 vegetation'].map((c) => (
-                    <li key={c} className="flex items-center gap-3 text-[14.5px] text-ink-2">
-                      <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-                      {c}
-                    </li>
-                  ))}
-                </ul>
-
-                <button className="mt-7 flex w-full items-center justify-between rounded-xl border border-line px-4 py-3.5 text-[15px] transition-colors hover:bg-raised">
-                  View source details
-                  <ChevronRight className="text-ink-3" />
-                </button>
+                <h2 className="pb-4 text-[18px] font-semibold">Reference status</h2>
+                <KV label="Characters" value={`${charsReady} / ${characters.length} ready`} />
+                <KV label="Total references" value={String(totalRefs)} />
+                <KV label="Show" value={production?.show_title || '…'} />
               </div>
             ) : null
           }
         />
       }
-      strip={<ThumbShotStrip statuses={statuses} variant="plain" />}
+      strip={<ThumbShotStrip shots={shots} statuses={statuses} variant="plain" />}
     >
       <div className="p-8">
         <h1 className="text-[32px] font-bold tracking-tight">Preparing references</h1>
-        <p className="pt-2 text-[15px] text-ink-2">11 of 12 references ready</p>
-        <div className="mt-4 h-[6px] w-full overflow-hidden rounded-full bg-raised-2">
-          <div className="h-full rounded-full bg-accent" style={{ width: `${(11 / 12) * 100}%` }} />
-        </div>
+        <p className="pt-2 text-[15px] text-ink-2">
+          {characters.length === 0
+            ? 'Loading character references…'
+            : `${charsReady} of ${characters.length} characters ready`}
+        </p>
+        {characters.length > 0 && (
+          <div className="mt-4 h-[6px] w-full overflow-hidden rounded-full bg-raised-2">
+            <div
+              className="h-full rounded-full bg-accent transition-all"
+              style={{ width: `${characters.length ? (charsReady / characters.length) * 100 : 0}%` }}
+            />
+          </div>
+        )}
 
         <div className="mt-8 grid grid-cols-[1fr_300px] gap-8">
           <div>
             <p className="pb-3 text-[12px] font-semibold tracking-[0.12em] text-ink-3">CHARACTERS</p>
             <div className="flex flex-col gap-3">
-              <RefCard thumbId="S05" title="Lumi" subtitle={<>6 references <span className="px-1 text-ink-3">·</span> <span className="text-accent">Ready</span></>} />
-              <RefCard thumbId="S07" title="Kai" subtitle={<>5 references <span className="px-1 text-ink-3">·</span> <span className="text-accent">Ready</span></>} />
+              {characters.length === 0 && (
+                <p className="text-[14.5px] text-ink-3">No characters found for this show.</p>
+              )}
+              {characters.map((char) => {
+                const refs = refsByChar[char.id] ?? []
+                const isGen = generating[char.id]
+                const firstRef = refs[0]
+                const refUrl = firstRef ? getArtifactDownloadUrl(firstRef.artifact_id) : undefined
+                return (
+                  <div
+                    key={char.id}
+                    className="flex w-full items-center gap-4 rounded-xl border border-line-soft bg-raised p-3"
+                  >
+                    {refUrl ? (
+                      <img src={refUrl} alt={char.name} className="h-[72px] w-[104px] shrink-0 rounded-md object-cover" />
+                    ) : (
+                      <div className="h-[72px] w-[104px] shrink-0 rounded-md bg-raised-2 flex items-center justify-center text-ink-4 text-[12px]">
+                        No ref
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <p className="text-[16px] font-semibold">{char.name}</p>
+                      <p className="pt-1 text-[14px] text-ink-2">
+                        {refs.length > 0
+                          ? <span className="text-accent">{refs.length} reference{refs.length !== 1 ? 's' : ''} · Ready</span>
+                          : 'No references yet'}
+                      </p>
+                    </div>
+                    {isGen ? (
+                      <Spinner size={18} />
+                    ) : refs.length === 0 ? (
+                      <button
+                        onClick={() => handleGenerate(char.id)}
+                        className="rounded-lg border border-line px-3 py-1.5 text-[13.5px] transition-colors hover:bg-raised-2"
+                      >
+                        Generate
+                      </button>
+                    ) : null}
+                  </div>
+                )
+              })}
             </div>
-
-            <p className="pb-3 pt-7 text-[12px] font-semibold tracking-[0.12em] text-ink-3">LOCATIONS</p>
-            <div className="flex flex-col gap-3">
-              <RefCard thumbId="S02" title="Kitchen" subtitle={<>3 angles <span className="px-1 text-ink-3">·</span> <span className="text-accent">Ready</span></>} />
-              <RefCard thumbId="S01" title="Garden" subtitle={<span className="text-accent">Generating evening view...</span>} selected generating />
-            </div>
-
-            <p className="pb-3 pt-7 text-[12px] font-semibold tracking-[0.12em] text-ink-3">PROPS</p>
-            <RefCard thumbId="S03" title="Moon necklace" subtitle={<span className="text-accent">Ready</span>} />
           </div>
 
-          <div className="pt-[260px]">
+          <div className="pt-8">
             <Checklist
               items={[
-                { label: 'Existing references checked', state: 'done' },
-                { label: 'Required views identified', state: 'done' },
-                { label: 'Character references ready', state: 'done' },
-                { label: 'Generating missing environment view', state: 'todo' },
+                { label: 'Show characters identified', state: characters.length > 0 ? 'done' : 'active' },
+                { label: 'Character references loaded', state: charsReady > 0 ? 'done' : 'todo' },
+                { label: 'All references ready', state: charsReady === characters.length && characters.length > 0 ? 'done' : 'todo' },
               ]}
             />
           </div>
