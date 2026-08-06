@@ -97,48 +97,48 @@ export function AnimationScreen() {
         />
       }
     >
-      <div className="p-8">
+      <div className="h-full overflow-hidden p-6">
         {selectedShot ? (
-          <>
-            <div className="flex items-start justify-between">
-              <h1 className="text-[32px] font-bold tracking-tight">Animation</h1>
-              <p className="pt-3 text-[15px] text-ink-2">
-                <span className="font-medium text-ink">
-                  {shots.filter(s => s.status.includes('video_approved') || s.status === 'completed').length} of {shots.length}
-                </span> approved
-              </p>
-            </div>
-
-            <div className="mt-6">
+          <div className="flex h-full gap-8">
+            {/* Left: portrait video, sized to fit without scrolling */}
+            <div className="w-[280px] shrink-0">
               <VideoPlayer shotId={`S${numStr}`} artifactId={selectedShot.approved_video_artifact_id} overlayLabel={`Shot ${numStr} · ${selectedShot.story_function}`} />
             </div>
 
-            <div className="mt-6 grid grid-cols-[1fr_auto] gap-8">
-              <div>
-                <p className="flex items-center gap-2.5 text-[16px] font-semibold">
-                  <span className={`h-3 w-3 rounded-full border-2 ${isApproved ? 'border-ink-3' : 'border-accent'}`} />
-                  {isApproved ? 'Motion generated successfully' : 'Generating motion sequence...'}
+            {/* Right: title, status, checklist, keyframe */}
+            <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+              <div className="flex items-start justify-between">
+                <h1 className="text-[28px] font-bold tracking-tight">Animation</h1>
+                <p className="pt-2 text-[15px] text-ink-2">
+                  <span className="font-medium text-ink">
+                    {shots.filter(s => s.status.includes('video_approved') || s.status === 'completed').length} of {shots.length}
+                  </span> approved
                 </p>
-                <p className="pt-3 text-[14px] text-ink-2">Motion instruction:</p>
-                <p className="pt-1 text-[14px] italic leading-relaxed text-ink-2">
-                  {selectedShot.motion_prompt || 'Standard generated motion'}
-                </p>
-                <Checklist
-                  className="pt-4"
-                  items={[
-                    { label: 'Keyframe attached', state: 'done' },
-                    { label: 'Motion instruction compiled', state: 'done' },
-                    { label: 'Clip generated', state: isApproved || !isGenerating ? 'done' : 'todo' },
-                    { label: 'Motion quality review', state: isApproved ? 'done' : 'todo' },
-                  ]}
-                />
               </div>
-              <div>
+
+              <p className="flex items-center gap-2.5 pt-5 text-[16px] font-semibold">
+                <span className={`h-3 w-3 rounded-full border-2 ${isApproved ? 'border-ink-3' : 'border-accent'}`} />
+                {isApproved ? 'Motion generated successfully' : 'Generating motion sequence...'}
+              </p>
+              <p className="pt-3 text-[14px] text-ink-2">Motion instruction:</p>
+              <p className="pt-1 text-[14px] italic leading-relaxed text-ink-2">
+                {selectedShot.motion_prompt || 'Standard generated motion'}
+              </p>
+              <Checklist
+                className="pt-4"
+                items={[
+                  { label: 'Keyframe attached', state: 'done' },
+                  { label: 'Motion instruction compiled', state: 'done' },
+                  { label: 'Clip generated', state: isApproved || !isGenerating ? 'done' : 'todo' },
+                  { label: 'Motion quality review', state: isApproved ? 'done' : 'todo' },
+                ]}
+              />
+              <div className="pt-5">
                 <p className="pb-3 text-[14px] text-ink-2">Approved keyframe</p>
-                <Thumb shotId={`S${numStr}`} artifactId={selectedShot.approved_keyframe_artifact_id} className="h-[110px] w-[160px]" />
+                <Thumb shotId={`S${numStr}`} artifactId={selectedShot.approved_keyframe_artifact_id} className="aspect-[9/16] w-[110px] rounded-lg" />
               </div>
             </div>
-          </>
+          </div>
         ) : (
           <div className="flex items-center justify-center h-full pt-20 text-ink-2">Loading animation...</div>
         )}
