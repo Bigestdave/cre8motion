@@ -111,7 +111,7 @@ export function StoryboardsScreen() {
           }
         />
       }
-      strip={<ThumbShotStrip statuses={stripStatuses} selected={selected} onSelect={setSelected} variant="plain" />}
+      strip={<ThumbShotStrip shots={shots} statuses={stripStatuses} selected={selected} onSelect={setSelected} variant="plain" />}
     >
       <div className="p-8">
         <div className="flex items-start justify-between">

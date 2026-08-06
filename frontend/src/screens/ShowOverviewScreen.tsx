@@ -182,10 +182,18 @@ export function ShowOverviewScreen() {
                     key={ep.id}
                     className="flex items-center gap-5 overflow-hidden rounded-xl border border-line-soft bg-surface"
                   >
-                    <Thumb
-                      shotId={EPISODE_THUMBS[i % EPISODE_THUMBS.length]}
-                      className="h-[110px] w-[190px] shrink-0 rounded-none"
-                    />
+                    {poster ? (
+                      <img
+                        src={poster}
+                        alt={ep.title}
+                        className="h-[110px] w-[190px] shrink-0 rounded-none object-cover"
+                      />
+                    ) : (
+                      <Thumb
+                        shotId={EPISODE_THUMBS[i % EPISODE_THUMBS.length]}
+                        className="h-[110px] w-[190px] shrink-0 rounded-none"
+                      />
+                    )}
                     <div className="flex-1 py-4">
                       <p className="text-[16px] font-semibold">
                         Episode {String(ep.episode_number).padStart(2, '0')}

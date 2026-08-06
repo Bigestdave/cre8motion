@@ -84,7 +84,7 @@ export function KeyframesReviewScreen() {
           }
         />
       }
-      strip={<ThumbShotStrip statuses={statuses} selected={selected} onSelect={setSelected} variant="plain" />}
+      strip={<ThumbShotStrip shots={shots} statuses={statuses} selected={selected} onSelect={setSelected} variant="plain" />}
     >
       <div className="flex h-full flex-col justify-between p-8">
         {selectedShot ? (

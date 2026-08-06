@@ -4,11 +4,22 @@ import { WorkspaceShell } from '../components/WorkspaceShell'
 import { SearchIcon } from '../components/icons2'
 import { Thumb } from '../components/ShotStrip'
 import { listProductions, type ProductionListItem } from '../data/api'
+import { usePoster } from '../data/artwork'
 import { SkeletonTableRow } from '../components/Skeleton'
 
 type StatusType = 'active' | 'warning' | 'review' | 'failed' | 'complete'
 
 const THUMBS = ['S02', 'S04', 'S01', 'S03', 'S05', 'S06']
+
+/** Real show poster for a production row; falls back to a gradient thumb. */
+function ProductionThumb({ showId, title, fallbackId }: { showId?: string | null; title?: string | null; fallbackId: string }) {
+  const poster = usePoster(showId, title)
+  return poster ? (
+    <img src={poster} alt={title || ''} className="h-[56px] w-[84px] shrink-0 rounded-lg object-cover" />
+  ) : (
+    <Thumb shotId={fallbackId} className="h-[56px] w-[84px] shrink-0 rounded-lg" />
+  )
+}
 
 const statusColors: Record<StatusType, string> = {
   active: 'bg-accent',
@@ -199,7 +210,7 @@ export function ProductionsScreen() {
                 className="grid grid-cols-[minmax(350px,2.5fr)_minmax(200px,1.5fr)_minmax(100px,1fr)_minmax(100px,1fr)_120px] items-center gap-4 border-b border-line-soft bg-surface px-5 py-4 transition-colors last:border-none hover:bg-selected"
               >
                 <div className="flex items-center gap-4">
-                  <Thumb shotId={THUMBS[i % THUMBS.length]} className="h-[56px] w-[84px] shrink-0 rounded-lg" />
+                  <ProductionThumb showId={p.show_id} title={p.show_title} fallbackId={THUMBS[i % THUMBS.length]} />
                   <div className="flex items-start gap-2.5">
                     <span
                       className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${statusColors[p.meta.type]}`}
