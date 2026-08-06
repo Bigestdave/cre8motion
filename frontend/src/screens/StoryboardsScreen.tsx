@@ -134,8 +134,7 @@ export function StoryboardsScreen() {
                   isSel ? 'border-accent' : 'border-line-soft bg-raised hover:border-line'
                 }`}
               >
-                {/* Fallback to S0X for thumbnails if artifact ID is not available for demo purposes */}
-                <Thumb shotId={`S${numStr}`} artifactId={s.approved_storyboard_artifact_id} className="aspect-[4/3] w-full rounded-b-none rounded-t-xl" />
+                <Thumb shotId={`S${numStr}`} artifactId={s.approved_storyboard_artifact_id} className="aspect-[9/16] w-full rounded-b-none rounded-t-xl" />
                 <div className="p-4">
                   <p className="text-[15px] font-semibold truncate">
                     {numStr} <span className="px-0.5 text-ink-3">·</span> {s.story_function}
