@@ -114,9 +114,9 @@ export function ReferencesScreen() {
                     className="flex w-full items-center gap-4 rounded-xl border border-line-soft bg-raised p-3"
                   >
                     {refUrl ? (
-                      <img src={refUrl} alt={char.name} className="h-[72px] w-[104px] shrink-0 rounded-md object-cover" />
+                      <img src={refUrl} alt={char.name} className="aspect-[9/16] w-[72px] shrink-0 rounded-md object-cover" />
                     ) : (
-                      <div className="h-[72px] w-[104px] shrink-0 rounded-md bg-raised-2 flex items-center justify-center text-ink-4 text-[12px]">
+                      <div className="aspect-[9/16] w-[72px] shrink-0 rounded-md bg-raised-2 flex items-center justify-center text-ink-4 text-[12px]">
                         No ref
                       </div>
                     )}

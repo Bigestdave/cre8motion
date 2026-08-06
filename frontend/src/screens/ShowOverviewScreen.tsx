@@ -246,9 +246,9 @@ export function ShowOverviewScreen() {
               {characters.map((c) => (
                 <div key={c.id} className="overflow-hidden rounded-xl border border-line-soft bg-surface">
                   {refImages[c.id] ? (
-                    <img src={refImages[c.id]} alt={c.name} className="h-[210px] w-full object-cover" />
+                    <img src={refImages[c.id]} alt={c.name} className="aspect-[9/16] w-full bg-raised object-contain" />
                   ) : (
-                    <div className="flex h-[210px] w-full items-center justify-center bg-raised text-[13px] text-ink-3">
+                    <div className="flex aspect-[9/16] w-full items-center justify-center bg-raised text-[13px] text-ink-3">
                       No reference image yet
                     </div>
                   )}

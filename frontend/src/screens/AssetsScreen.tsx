@@ -230,9 +230,9 @@ export function AssetsScreen() {
                         : 'border-line-soft hover:border-line'
                     }`}
                   >
-                    <div className="relative flex aspect-[16/10] items-center justify-center overflow-hidden border-b border-line-soft bg-raised text-[13px] text-ink-4">
+                    <div className="relative flex aspect-[9/16] items-center justify-center overflow-hidden border-b border-line-soft bg-raised text-[13px] text-ink-4">
                       {char.imageUrl ? (
-                        <img src={char.imageUrl} alt={char.name} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+                        <img src={char.imageUrl} alt={char.name} className="h-full w-full object-contain transition-transform group-hover:scale-105" />
                       ) : (
                         <>
                           <div className="absolute inset-0 bg-gradient-to-tr from-surface to-raised-2 opacity-50" />
@@ -292,7 +292,7 @@ export function AssetsScreen() {
               <div className="flex-1">
                 <div className="relative flex aspect-[9/13] w-full items-center justify-center overflow-hidden rounded-xl border border-line bg-raised text-[14px] text-ink-4">
                   {selectedAsset.imageUrl ? (
-                    <img src={selectedAsset.imageUrl} alt={selectedAsset.name} className="h-full w-full object-cover" />
+                    <img src={selectedAsset.imageUrl} alt={selectedAsset.name} className="h-full w-full object-contain" />
                   ) : (
                     <span>No reference image uploaded yet</span>
                   )}
