@@ -20,6 +20,7 @@ export interface ShowEpisodeSummary {
   episode_number: number
   title: string
   status: string
+  latest_production_id?: string | null
 }
 
 export interface Show {

@@ -203,10 +203,14 @@ export function ShowOverviewScreen() {
                       <p className="pt-1.5 text-[14px] text-ink-2">{episodeStatusLabel(ep.status)}</p>
                     </div>
                     <Link
-                      to={`/new-episode?showId=${id}&episodeId=${ep.id}`}
+                      to={
+                        ep.latest_production_id
+                          ? `/plan?productionId=${ep.latest_production_id}`
+                          : `/new-episode?showId=${id}&episodeId=${ep.id}`
+                      }
                       className="mr-6 shrink-0 rounded-lg bg-ink px-5 py-2.5 text-[14px] font-medium text-app transition-colors hover:bg-ink-2"
                     >
-                      {episodeStatusLabel(ep.status) === 'Draft' ? 'Start production' : 'Open'}
+                      {ep.latest_production_id ? 'Open' : 'Start production'}
                     </Link>
                   </div>
                 ))}

@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import desc
 
 from app.db.session import SessionLocal
 from app.models.episode import Episode
+from app.models.production import ProductionRun
 from app.models.show import Show, Workspace, StyleProfile, Character, CharacterReference, Location, Prop
 from app.providers.qwen import QwenReasoningProvider
 from app.schemas.api import CharacterCreateRequest, ShowCreateRequest
@@ -40,15 +42,23 @@ def show_to_dict(show, db: Session = None):
         )
         latest = episodes[-1] if episodes else None
         data["episode_count"] = len(episodes)
-        data["episodes"] = [
-            {
+        ep_summaries = []
+        for ep in episodes:
+            # Find the latest production run for this episode
+            latest_run = (
+                db.query(ProductionRun)
+                .filter(ProductionRun.episode_id == ep.id)
+                .order_by(desc(ProductionRun.version))
+                .first()
+            )
+            ep_summaries.append({
                 "id": ep.id,
                 "episode_number": ep.episode_number,
                 "title": ep.title,
                 "status": ep.status,
-            }
-            for ep in episodes
-        ]
+                "latest_production_id": latest_run.id if latest_run else None,
+            })
+        data["episodes"] = ep_summaries
         data["latest_episode"] = (
             {
                 "id": latest.id,
