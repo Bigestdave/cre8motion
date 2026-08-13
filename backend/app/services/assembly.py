@@ -49,9 +49,10 @@ def _concat_clips(video_paths: list, production_id: str, final_video_path: str) 
     """Stream-copy concat of same-codec clips. Returns True on success."""
     concat_list_path = get_artifact_path(f"productions/{production_id}/concat.txt")
     os.makedirs(os.path.dirname(concat_list_path), exist_ok=True)
-    with open(concat_list_path, "w") as f:
+    with open(concat_list_path, "w", encoding="utf-8") as f:
         for path in video_paths:
-            f.write(f"file '{os.path.abspath(path)}'\n")
+            clean_path = os.path.abspath(path).replace("\\", "/")
+            f.write(f"file '{clean_path}'\n")
 
     cmd = [
         FFMPEG, "-y", "-f", "concat", "-safe", "0",
@@ -63,13 +64,14 @@ def _concat_clips(video_paths: list, production_id: str, final_video_path: str) 
         subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         return True
     except (FileNotFoundError, subprocess.CalledProcessError) as e:
-        # Stream copy can fail if clips differ in codec/params; re-encode as a fallback.
         stderr = getattr(e, "stderr", b"") or b""
         print(f"Concat stream-copy failed ({stderr[:200]!r}); retrying with re-encode.")
         cmd_reencode = [
             FFMPEG, "-y", "-f", "concat", "-safe", "0",
             "-i", os.path.abspath(concat_list_path),
-            "-pix_fmt", "yuv420p", "-c:v", "libx264",
+            "-vf", "scale=1080:1920:force_original_aspect_ratio=decrease,"
+                   "pad=1080:1920:(ow-iw)/2:(oh-ih)/2,format=yuv420p",
+            "-r", "24", "-c:v", "libx264",
             os.path.abspath(final_video_path),
         ]
         try:
@@ -84,13 +86,15 @@ def _slideshow_from_keyframes(specs: list, final_video_path: str) -> bool:
     """Build a Ken-Burns-free slideshow MP4 from keyframes when no clips exist."""
     concat_list_path = os.path.join(os.path.dirname(final_video_path), "slideshow.txt")
     os.makedirs(os.path.dirname(concat_list_path), exist_ok=True)
-    with open(concat_list_path, "w") as f:
+    with open(concat_list_path, "w", encoding="utf-8") as f:
         for path, duration in specs:
-            f.write(f"file '{os.path.abspath(path)}'\n")
+            clean_path = os.path.abspath(path).replace("\\", "/")
+            f.write(f"file '{clean_path}'\n")
             f.write(f"duration {duration}\n")
         # ffmpeg concat demuxer needs the last image repeated (without duration).
         if specs:
-            f.write(f"file '{os.path.abspath(specs[-1][0])}'\n")
+            clean_path = os.path.abspath(specs[-1][0]).replace("\\", "/")
+            f.write(f"file '{clean_path}'\n")
 
     cmd = [
         FFMPEG, "-y", "-f", "concat", "-safe", "0",

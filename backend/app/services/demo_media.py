@@ -8,16 +8,14 @@ FFMPEG = resolve_ffmpeg() or "ffmpeg"
 
 
 def create_stage_image(storage_key: str, label: str, sequence_number: int) -> str:
-    """Create a local placeholder only when a cloud asset is unavailable in demo mode."""
+    """Create a local placeholder image when a cloud asset is unavailable in demo mode."""
     output_path = get_artifact_path(storage_key)
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
     color = ["#29485f", "#6a4730", "#4e6540", "#70504e", "#57466a", "#647139"][sequence_number % 6]
     filter_graph = (
         f"color=c={color}:s=1080x1920,"
-        f"drawbox=x=54:y=54:w=972:h=1812:color=white@0.22:t=3,"
-        f"drawtext=text='{label}':fontcolor=white:fontsize=62:x=(w-text_w)/2:y=(h-text_h)/2,"
-        f"drawtext=text='Local demo placeholder':fontcolor=white@0.8:fontsize=34:x=(w-text_w)/2:y=h-180"
+        f"drawbox=x=54:y=54:w=972:h=1812:color=white@0.22:t=4"
     )
     command = [FFMPEG, "-y", "-f", "lavfi", "-i", filter_graph, "-frames:v", "1", output_path]
     try:
@@ -35,15 +33,13 @@ def create_stage_image(storage_key: str, label: str, sequence_number: int) -> st
 
 
 def create_stage_video(storage_key: str, label: str, sequence_number: int, duration_seconds: int) -> str:
-    """Create a playable local MP4 placeholder only when a cloud clip is unavailable."""
+    """Create a playable local 1080x1920 MP4 video placeholder when a cloud clip is unavailable."""
     output_path = get_artifact_path(storage_key)
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     color = ["#29485f", "#6a4730", "#4e6540", "#70504e", "#57466a", "#647139"][sequence_number % 6]
     filter_graph = (
         f"color=c={color}:s=1080x1920:r=24,"
-        f"drawbox=x=54:y=54:w=972:h=1812:color=white@0.22:t=3,"
-        f"drawtext=text='{label}':fontcolor=white:fontsize=62:x=(w-text_w)/2:y=(h-text_h)/2,"
-        f"drawtext=text='Local demo placeholder':fontcolor=white@0.8:fontsize=34:x=(w-text_w)/2:y=h-180"
+        f"drawbox=x=54:y=54:w=972:h=1812:color=white@0.22:t=4"
     )
     command = [
         FFMPEG, "-y", "-f", "lavfi", "-i", filter_graph,
@@ -53,7 +49,5 @@ def create_stage_video(storage_key: str, label: str, sequence_number: int, durat
     try:
         subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except (FileNotFoundError, subprocess.CalledProcessError):
-        # The browser falls back to the associated keyframe preview when local FFmpeg is unavailable.
-        # Production Docker/ECS installs FFmpeg, so deployed demo clips remain playable MP4 files.
         Path(output_path).touch()
     return output_path
