@@ -29,16 +29,26 @@ export function AssemblyScreen() {
     getProductionShots(productionId).then(setShots).catch(console.error)
   }, [productionId, lastEvent])
 
+  const uniqueShots = useMemo(() => {
+    const seen = new Set<string>()
+    return shots.filter((s) => {
+      const key = s.sequence_number ? `seq_${s.sequence_number}` : s.id
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+  }, [shots])
+
   const statuses: StripStatuses = useMemo(() => {
     const st: StripStatuses = {}
-    shots.forEach(s => {
+    uniqueShots.forEach(s => {
       st[s.id] = s.approved_video_artifact_id ? 'approved' : 'pending'
     })
     return st
-  }, [shots])
+  }, [uniqueShots])
 
-  const approvedClips = shots.filter(s => s.approved_video_artifact_id).length
-  const totalDuration = shots.reduce((sum, s) => sum + (s.duration_seconds || 0), 0)
+  const approvedClips = uniqueShots.filter(s => s.approved_video_artifact_id).length
+  const totalDuration = uniqueShots.reduce((sum, s) => sum + (s.duration_seconds || 0), 0)
   const isComplete = production?.current_stage === 'READY_FOR_REVIEW' || production?.current_stage === 'FINAL_QC'
   const hasFinalVideo = Boolean(production?.final_video_artifact_id)
 
@@ -55,7 +65,7 @@ export function AssemblyScreen() {
                 <KV label="Frame rate" value="24 fps" />
                 <KV label="Format" value={<>MP4 <span className="px-1 text-ink-3">·</span> H.264</>} />
                 <KV label="Duration" value={totalDuration ? formatDuration(totalDuration) : '…'} />
-                <KV label="Clips assembled" value={`${approvedClips} / ${shots.length}`} />
+                <KV label="Clips assembled" value={`${approvedClips} / ${uniqueShots.length}`} />
 
                 <button className="mt-9 flex w-full items-center justify-between rounded-xl border border-line px-4 py-3.5 text-[15px] transition-colors hover:bg-raised">
                   <span className="flex items-center gap-3">
@@ -68,7 +78,7 @@ export function AssemblyScreen() {
           }
         />
       }
-      strip={<ThumbShotStrip shots={shots} statuses={statuses} variant="name-time" />}
+      strip={<ThumbShotStrip shots={uniqueShots} statuses={statuses} variant="name-time" />}
     >
       <div className="p-8">
         <h1 className="text-[32px] font-bold tracking-tight">Assembling final episode</h1>
@@ -88,9 +98,9 @@ export function AssemblyScreen() {
             <p className="text-[14.5px] font-medium">{totalDuration ? formatDuration(totalDuration) : '…'} total</p>
           </div>
 
-          {shots.length > 0 && (
+          {uniqueShots.length > 0 && (
             <div className="mt-3 flex overflow-hidden rounded-lg border border-line-soft">
-              {shots.map((s) => {
+              {uniqueShots.map((s) => {
                 const num = String(s.sequence_number).padStart(2, '0')
                 const approved = Boolean(s.approved_video_artifact_id)
                 return (
@@ -116,7 +126,7 @@ export function AssemblyScreen() {
           <Checklist
             items={[
               { label: 'Video clips approved', state: approvedClips > 0 ? 'done' : 'todo' },
-              { label: `${approvedClips} of ${shots.length} clips ready`, state: approvedClips === shots.length && shots.length > 0 ? 'done' : 'active' },
+              { label: `${approvedClips} of ${uniqueShots.length} clips ready`, state: approvedClips === uniqueShots.length && uniqueShots.length > 0 ? 'done' : 'active' },
             ]}
           />
           <Checklist

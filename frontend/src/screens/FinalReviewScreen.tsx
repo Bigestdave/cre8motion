@@ -37,15 +37,25 @@ export function FinalReviewScreen() {
       .catch(err => console.error('Failed to load shots', err))
   }, [productionId, lastEvent])
 
+  const uniqueShots = useMemo(() => {
+    const seen = new Set<string>()
+    return shots.filter((s: any) => {
+      const key = s.sequence_number ? `seq_${s.sequence_number}` : s.id
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+  }, [shots])
+
   const statuses: StripStatuses = useMemo(() => {
     const st: StripStatuses = {}
-    shots.forEach(s => {
+    uniqueShots.forEach((s: any) => {
       st[s.id] = s.status === 'completed' || s.status.includes('approved') ? 'approved' : 'pending'
     })
     return st
-  }, [shots])
+  }, [uniqueShots])
 
-  const totalDuration = shots.reduce((sum, s) => sum + (s.duration_seconds || 0), 0)
+  const totalDuration = uniqueShots.reduce((sum: number, s: any) => sum + (s.duration_seconds || 0), 0)
   const formatDuration = (sec: number) => {
     const m = Math.floor(sec / 60)
     const s = Math.floor(sec % 60)
@@ -135,10 +145,10 @@ export function FinalReviewScreen() {
                 <div>
                   <h3 className="pb-3 text-[16px] font-semibold">Continuity locks</h3>
                   <p className="text-[14px] text-ink-2 leading-relaxed">
-                    All character outfits, props, and scene backgrounds maintained consistency across all {shots.length} shots.
+                    All character outfits, props, and scene backgrounds maintained consistency across all {uniqueShots.length} shots.
                   </p>
                 </div>
-              ) : (
+              ) : tab === 'Production' ? (
                 <div>
                   <h3 className="pb-3 text-[16px] font-semibold">Run diagnostics</h3>
                   <KV label="Run ID" value={production.id.slice(0, 8)} />
@@ -146,11 +156,11 @@ export function FinalReviewScreen() {
                   <KV label="Stage" value={production.current_stage} />
                   <KV label="Status" value={production.status} />
                 </div>
-              )
+              ) : null
             }
           />
         }
-        strip={<ThumbShotStrip shots={shots} statuses={statuses} selected={selected} onSelect={setSelected} variant="name-time" />}
+        strip={<ThumbShotStrip shots={uniqueShots} statuses={statuses} selected={selected} onSelect={setSelected} variant="name-time" />}
       >
         <div className="p-8">
           <h1 className="text-[32px] font-bold tracking-tight">Final review</h1>
@@ -176,16 +186,16 @@ export function FinalReviewScreen() {
             )}
           </div>
 
-          <div className="mt-6 grid grid-cols-8 gap-3">
-            {shots.map((s) => {
+          <div className="mt-6 flex gap-3 overflow-x-auto pb-1">
+            {uniqueShots.map((s) => {
               const isSel = s.id === selected
               const num = String(s.sequence_number).padStart(2, '0')
               return (
                 <button
                   key={s.id}
                   onClick={() => setSelected(s.id)}
-                  className={`flex flex-col items-center gap-2 rounded-xl border py-4 transition-colors ${
-                    isSel ? 'border-accent' : 'border-line-soft bg-raised hover:border-line'
+                  className={`min-w-[80px] flex-1 shrink-0 flex flex-col items-center gap-2 rounded-xl border py-4 transition-colors ${
+                    isSel ? 'border-accent bg-selected' : 'border-line-soft bg-raised hover:border-line'
                   }`}
                 >
                   <span className="text-[16px] font-semibold">S{num}</span>

@@ -14,7 +14,19 @@ def get_db():
 
 @router.get("/productions/{production_id}/shots")
 def list_shots(production_id: str, db: Session = Depends(get_db)):
-    return db.query(Shot).filter(Shot.production_run_id == production_id).order_by(Shot.sequence_number).all()
+    all_shots = db.query(Shot).filter(Shot.production_run_id == production_id).order_by(Shot.sequence_number).all()
+    shots_by_seq = {}
+    for s in all_shots:
+        seq = s.sequence_number
+        if seq not in shots_by_seq:
+            shots_by_seq[seq] = s
+        else:
+            current = shots_by_seq[seq]
+            if not current.approved_video_artifact_id and s.approved_video_artifact_id:
+                shots_by_seq[seq] = s
+            elif not current.approved_keyframe_artifact_id and s.approved_keyframe_artifact_id:
+                shots_by_seq[seq] = s
+    return sorted(shots_by_seq.values(), key=lambda x: x.sequence_number or 0)
 
 @router.get("/shots/{shot_id}")
 def get_shot(shot_id: str, db: Session = Depends(get_db)):
