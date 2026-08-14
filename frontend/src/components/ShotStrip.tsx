@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, useMemo, type ReactNode } from 'react'
 
 import { getArtifactDownloadUrl } from '../data/api'
 import { shots as fixtureShots, shotGradients, type ShotStatus } from '../data/shots'
@@ -81,24 +81,34 @@ interface TextStripProps {
 
 /** Text-only strip cards (Plan screen): shot / narrative function / duration. */
 export function TextShotStrip({ shots = fallbackShots, statuses, selected, onSelect }: TextStripProps) {
+  const uniqueShots = useMemo(() => {
+    const seen = new Set<string>()
+    return shots.filter((s) => {
+      const key = s.sequence_number ? `seq_${s.sequence_number}` : s.id
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+  }, [shots])
+
   return (
-    <div className="grid grid-cols-8 gap-3">
-      {shots.map((shot) => {
+    <div className="flex gap-3 overflow-x-auto pb-1">
+      {uniqueShots.map((shot: StripShot) => {
         const isSelected = selected === shot.id
         return (
           <button
             key={shot.id}
             onClick={() => onSelect?.(shot.id)}
-            className={`rounded-lg border p-4 text-left transition-all ${
+            className={`min-w-[130px] flex-1 shrink-0 rounded-lg border p-3.5 text-left transition-all ${
               isSelected ? 'border-accent bg-selected' : 'border-line-soft bg-surface hover:border-line'
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[15px] font-semibold">{shotLabel(shot)}</span>
-              <StatusIcon status={statuses[shot.id] ?? 'pending'} size={16} />
+              <span className="text-[14.5px] font-semibold">{shotLabel(shot)}</span>
+              <StatusIcon status={statuses[shot.id] ?? 'pending'} size={15} />
             </div>
-            <p className="mt-3 truncate text-[13.5px] text-ink-2">{shot.story_function || 'Untitled shot'}</p>
-            <p className="mt-1 text-[13.5px] text-ink-3">{shot.duration_seconds || 0} sec</p>
+            <p className="mt-2 truncate text-[13px] text-ink-2">{shot.story_function || 'Untitled shot'}</p>
+            <p className="mt-0.5 text-[12.5px] text-ink-3">{shot.duration_seconds || 0} sec</p>
           </button>
         )
       })}
@@ -119,16 +129,26 @@ interface ThumbStripProps {
 
 /** Thumbnail strip cards used by production stages. Uses API shots when supplied. */
 export function ThumbShotStrip({ shots = fallbackShots, statuses, selected, onSelect, variant = 'name-time', footer, caption }: ThumbStripProps) {
+  const uniqueShots = useMemo(() => {
+    const seen = new Set<string>()
+    return shots.filter((s) => {
+      const key = s.sequence_number ? `seq_${s.sequence_number}` : s.id
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+  }, [shots])
+
   return (
-    <div className="grid grid-cols-8 gap-3">
-      {shots.map((shot) => {
+    <div className="flex gap-2.5 overflow-x-auto pb-1">
+      {uniqueShots.map((shot: StripShot) => {
         const isSelected = selected === shot.id
         const artifactId = shot.approved_video_artifact_id || shot.approved_keyframe_artifact_id || shot.approved_storyboard_artifact_id
         return (
           <button
             key={shot.id}
             onClick={() => onSelect?.(shot.id)}
-            className={`relative rounded-lg border p-[5px] pb-2 text-left transition-all ${
+            className={`min-w-[125px] flex-1 shrink-0 relative rounded-lg border p-[5px] pb-2 text-left transition-all ${
               isSelected
                 ? 'border-2 border-accent bg-selected'
                 : 'border border-line-soft bg-surface hover:border-line'
@@ -137,15 +157,15 @@ export function ThumbShotStrip({ shots = fallbackShots, statuses, selected, onSe
             <Thumb
               shotId={shotLabel(shot)}
               artifactId={artifactId}
-              className="mb-2.5 aspect-[16/10] w-full rounded-md border border-line-soft"
+              className="mb-2 aspect-[16/10] w-full rounded-md border border-line-soft"
             />
 
             <div className="flex items-center justify-between px-1">
-              <span className="text-[15px] font-normal text-ink">{shotLabel(shot)}</span>
+              <span className="text-[14px] font-medium text-ink">{shotLabel(shot)}</span>
               <StatusIcon status={statuses[shot.id] ?? 'pending'} size={14} />
             </div>
 
-            <div className="px-1 pt-1 text-[13px] leading-tight text-ink-4">
+            <div className="px-1 pt-1 text-[12.5px] leading-tight text-ink-4">
               {variant === 'name-time' && (
                 <>
                   <p className="truncate text-ink-3">{shot.story_function || 'Untitled shot'}</p>

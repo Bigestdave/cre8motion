@@ -30,6 +30,9 @@ def create_episode_plan(db, production_id, brief, show_style=None):
             f"(got {type(shots_spec).__name__} with {len(shots_spec) if isinstance(shots_spec, list) else 'n/a'} entries)"
         )
 
+    # Ensure idempotency: clear any prior unapproved/stale shots for this run
+    db.query(Shot).filter(Shot.production_run_id == production_id).delete()
+
     shots = []
     for index, spec in enumerate(shots_spec, start=1):
         if not isinstance(spec, dict):
