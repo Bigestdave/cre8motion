@@ -11,6 +11,7 @@ import {
   uploadCharacterReference,
   type Show,
 } from '../data/api'
+import { characterRefImage } from '../data/artwork'
 import { SkeletonShowCard } from '../components/Skeleton'
 
 interface CharacterAsset {
@@ -66,9 +67,15 @@ export function AssetsScreen() {
                 try {
                   const refs = await listCharacterReferences(c.id)
                   refsCount = refs.length
-                  imageUrl = getArtifactDownloadUrl(refs[0]?.artifact_id)
+                  if (refs[0]?.artifact_id) {
+                    imageUrl = getArtifactDownloadUrl(refs[0].artifact_id)
+                  }
                 } catch {
                   /* character has no references */
+                }
+                if (!imageUrl) {
+                  imageUrl = characterRefImage(c.name)
+                  if (imageUrl && refsCount === 0) refsCount = 1
                 }
                 all.push({
                   id: c.id,

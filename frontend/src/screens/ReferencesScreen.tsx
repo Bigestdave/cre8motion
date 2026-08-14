@@ -6,6 +6,7 @@ import { ThumbShotStrip, type StripStatuses } from '../components/ShotStrip'
 import { Checklist } from '../components/Checklist'
 import { Spinner } from '../components/icons'
 import { TextShimmer } from '../components/ui/shimmer-text'
+import { characterRefImage } from '../data/artwork'
 import { getProduction, getProductionShots, listCharacters, listCharacterReferences, generateCharacterReference, getArtifactDownloadUrl } from '../data/api'
 import { useProductionEvents } from '../hooks/useProductionEvents'
 
@@ -49,7 +50,7 @@ export function ReferencesScreen() {
   }, [shots])
 
   const totalRefs = Object.values(refsByChar).reduce((n, refs) => n + refs.length, 0)
-  const charsReady = characters.filter(c => (refsByChar[c.id]?.length ?? 0) > 0).length
+  const charsReady = characters.filter(c => (refsByChar[c.id]?.length ?? 0) > 0 || Boolean(characterRefImage(c.name))).length
 
   const handleGenerate = async (characterId: string) => {
     if (generating[characterId]) return
@@ -112,7 +113,8 @@ export function ReferencesScreen() {
                 const refs = refsByChar[char.id] ?? []
                 const isGen = generating[char.id]
                 const firstRef = refs[0]
-                const refUrl = firstRef ? getArtifactDownloadUrl(firstRef.artifact_id) : undefined
+                const refUrl = (firstRef ? getArtifactDownloadUrl(firstRef.artifact_id) : undefined) || characterRefImage(char.name)
+                const hasRef = refs.length > 0 || Boolean(characterRefImage(char.name))
                 return (
                   <div
                     key={char.id}
@@ -128,14 +130,14 @@ export function ReferencesScreen() {
                     <div className="flex-1">
                       <p className="text-[16px] font-semibold">{char.name}</p>
                       <p className="pt-1 text-[14px] text-ink-2">
-                        {refs.length > 0
-                          ? <span className="text-accent">{refs.length} reference{refs.length !== 1 ? 's' : ''} · Ready</span>
+                        {hasRef
+                          ? <span className="text-accent">{Math.max(refs.length, 1)} reference{Math.max(refs.length, 1) !== 1 ? 's' : ''} · Ready</span>
                           : 'No references yet'}
                       </p>
                     </div>
                     {isGen ? (
                       <Spinner size={18} />
-                    ) : refs.length === 0 ? (
+                    ) : !hasRef ? (
                       <button
                         onClick={() => handleGenerate(char.id)}
                         className="rounded-lg border border-line px-3 py-1.5 text-[13.5px] transition-colors hover:bg-raised-2"

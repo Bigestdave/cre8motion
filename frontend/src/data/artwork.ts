@@ -4,6 +4,11 @@ import { API_BASE_URL } from './api'
 import posterFruitfulSecrets from '../assets/poster-fruitful-secrets.png'
 import posterLuckyWallet from '../assets/poster-lucky-wallet.png'
 import bannerFruitfulSecrets from '../assets/banner-fruitful-secrets.png'
+import refGrandparent from '../assets/ref-grandparent.png'
+import refLumi from '../assets/ref-lumi.png'
+import refVisitor from '../assets/ref-visitor.png'
+import refRemy from '../assets/ref-remy.png'
+import refWallet from '../assets/ref-wallet.png'
 
 const POSTERS: Record<string, string> = {
   'fruitful secrets': posterFruitfulSecrets,
@@ -13,6 +18,26 @@ const POSTERS: Record<string, string> = {
 const BANNERS: Record<string, string> = {
   'fruitful secrets': bannerFruitfulSecrets,
   'the lucky wallet': posterLuckyWallet,
+}
+
+const CHARACTER_REFS: Record<string, string> = {
+  'grandparent': refGrandparent,
+  'lumi': refLumi,
+  'the visitor': refVisitor,
+  'visitor': refVisitor,
+  'remy': refRemy,
+  'the wallet': refWallet,
+  'wallet': refWallet,
+}
+
+export function characterRefImage(name?: string | null): string | undefined {
+  if (!name) return undefined
+  const key = name.trim().toLowerCase()
+  if (CHARACTER_REFS[key]) return CHARACTER_REFS[key]
+  for (const [k, v] of Object.entries(CHARACTER_REFS)) {
+    if (key.includes(k) || k.includes(key)) return v
+  }
+  return undefined
 }
 
 // Cache of showId -> generated poster URL. Only positive results are cached —

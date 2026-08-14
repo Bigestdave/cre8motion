@@ -13,7 +13,7 @@ import {
   type CharacterSummary,
 } from '../data/api'
 import { pushRecentShow } from '../data/recents'
-import { usePoster } from '../data/artwork'
+import { usePoster, characterRefImage } from '../data/artwork'
 import { SkeletonShowHeader, SkeletonEpisodeRow } from '../components/Skeleton'
 
 const tabs = ['Episodes', 'Characters'] as const
@@ -55,10 +55,11 @@ export function ShowOverviewScreen() {
           charData.map(async (c) => {
             try {
               const refs = await listCharacterReferences(c.id)
-              const url = getArtifactDownloadUrl(refs[0]?.artifact_id)
+              const url = (refs[0]?.artifact_id ? getArtifactDownloadUrl(refs[0].artifact_id) : undefined) || characterRefImage(c.name)
               if (url) images[c.id] = url
             } catch {
-              /* no references yet */
+              const fallback = characterRefImage(c.name)
+              if (fallback) images[c.id] = fallback
             }
           }),
         )
