@@ -5,6 +5,7 @@ import { RightPanel, KV } from '../components/RightPanel'
 import { ThumbShotStrip, type StripStatuses } from '../components/ShotStrip'
 import { Checklist } from '../components/Checklist'
 import { Spinner } from '../components/icons'
+import { TextShimmer } from '../components/ui/shimmer-text'
 import { getProduction, getProductionShots, listCharacters, listCharacterReferences, generateCharacterReference, getArtifactDownloadUrl } from '../data/api'
 import { useProductionEvents } from '../hooks/useProductionEvents'
 
@@ -43,7 +44,7 @@ export function ReferencesScreen() {
 
   const statuses: StripStatuses = useMemo(() => {
     const st: StripStatuses = {}
-    shots.forEach(s => { st[s.id] = s.approved_storyboard_artifact_id ? 'approved' : 'pending' })
+    shots.forEach(s => { st[s.id] = s.approved_keyframe_artifact_id ? 'approved' : 'pending' })
     return st
   }, [shots])
 
@@ -83,9 +84,13 @@ export function ReferencesScreen() {
       <div className="p-8">
         <h1 className="text-[32px] font-bold tracking-tight">Preparing references</h1>
         <p className="pt-2 text-[15px] text-ink-2">
-          {characters.length === 0
-            ? 'Loading character references…'
-            : `${charsReady} of ${characters.length} characters ready`}
+          {characters.length === 0 ? (
+            <TextShimmer className="text-[15px] font-medium" duration={2}>
+              Resolving character model sheets and show references…
+            </TextShimmer>
+          ) : (
+            `${charsReady} of ${characters.length} characters ready`
+          )}
         </p>
         {characters.length > 0 && (
           <div className="mt-4 h-[6px] w-full overflow-hidden rounded-full bg-raised-2">

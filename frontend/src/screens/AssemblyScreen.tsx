@@ -5,6 +5,7 @@ import { RightPanel, KV } from '../components/RightPanel'
 import { ThumbShotStrip, type StripStatuses } from '../components/ShotStrip'
 import { Checklist } from '../components/Checklist'
 import { DocIcon } from '../components/icons'
+import { TextShimmer } from '../components/ui/shimmer-text'
 import { getProduction, getProductionShots } from '../data/api'
 import { useProductionEvents } from '../hooks/useProductionEvents'
 
@@ -72,9 +73,13 @@ export function AssemblyScreen() {
       <div className="p-8">
         <h1 className="text-[32px] font-bold tracking-tight">Assembling final episode</h1>
         <p className="pt-2 text-[15px] text-ink-2">
-          {hasFinalVideo
-            ? 'Assembly complete — final episode is ready for review.'
-            : `Combining ${approvedClips} approved clips into the final cut.`}
+          {hasFinalVideo ? (
+            'Assembly complete — final episode is ready for review.'
+          ) : (
+            <TextShimmer className="font-medium" duration={2}>
+              {`Combining ${approvedClips} approved clips into the final cut…`}
+            </TextShimmer>
+          )}
         </p>
 
         <div className="mt-7">

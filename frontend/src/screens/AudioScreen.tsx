@@ -5,6 +5,7 @@ import { RightPanel, KV } from '../components/RightPanel'
 import { ThumbShotStrip, type StripStatuses } from '../components/ShotStrip'
 import { Checklist } from '../components/Checklist'
 import { MusicNote } from '../components/icons'
+import { TextShimmer } from '../components/ui/shimmer-text'
 import { getProduction, getProductionShots } from '../data/api'
 import { useProductionEvents } from '../hooks/useProductionEvents'
 
@@ -49,7 +50,11 @@ export function AudioScreen() {
     >
       <div className="p-8">
         <h1 className="text-[32px] font-bold tracking-tight">Audio</h1>
-        <p className="pt-2 text-[15px] text-ink-2">Cre8Motion episodes are silent by design — no audio is generated.</p>
+        <p className="pt-2 text-[15px] text-ink-2">
+          <TextShimmer className="font-medium" duration={2}>
+            Silent-acting pass-through — advancing immediately to multi-clip assembly…
+          </TextShimmer>
+        </p>
 
         <div className="mt-10 flex flex-col items-center justify-center gap-5 rounded-xl border border-line-soft bg-raised py-14 text-center">
           <MusicNote size={36} className="text-ink-4" />

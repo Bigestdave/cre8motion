@@ -5,6 +5,7 @@ import { RightPanel, KV, ScoreBar } from '../components/RightPanel'
 import { ThumbShotStrip, type StripStatuses } from '../components/ShotStrip'
 import { VideoPlayer } from '../components/VideoPlayer'
 import { ExportModal } from '../components/ExportModal'
+import { TextShimmer } from '../components/ui/shimmer-text'
 import { getProduction, getProductionShots, approveProduction } from '../data/api'
 import { useProductionEvents } from '../hooks/useProductionEvents'
 import type { ProductionRun, ProductionShot } from '../data/api'
@@ -165,8 +166,12 @@ export function FinalReviewScreen() {
                 className="max-w-[380px] mx-auto shadow-2xl"
               />
             ) : (
-              <div className="flex aspect-[16/8.2] w-full items-center justify-center rounded-xl bg-raised text-[15px] text-ink-2">
-                Final episode is still assembling...
+              <div className="flex flex-col items-center justify-center gap-3 aspect-[16/8.2] w-full rounded-xl bg-raised border border-line-soft p-8 text-center shadow-sm">
+                <div className="h-2.5 w-2.5 rounded-full bg-accent animate-pulse mb-1" />
+                <TextShimmer className="text-[17px] font-semibold tracking-wide" duration={2}>
+                  Stitching high-fidelity final episode with full audio-visual cut…
+                </TextShimmer>
+                <p className="text-[13.5px] text-ink-3">FFmpeg multi-threaded rendering engine is compiling all approved shots</p>
               </div>
             )}
           </div>

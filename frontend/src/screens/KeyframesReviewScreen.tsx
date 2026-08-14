@@ -4,6 +4,7 @@ import { AppShell } from '../components/AppShell'
 import { RightPanel, ScoreBar } from '../components/RightPanel'
 import { ThumbShotStrip, Thumb, type StripStatuses } from '../components/ShotStrip'
 import { ChevronRight, ChevronDown } from '../components/icons'
+import { TextShimmer } from '../components/ui/shimmer-text'
 import { getProductionShots } from '../data/api'
 import { useProductionEvents } from '../hooks/useProductionEvents'
 
@@ -120,7 +121,13 @@ export function KeyframesReviewScreen() {
             </div>
           </>
         ) : (
-          <div className="flex items-center justify-center h-full text-ink-2">Loading keyframe details...</div>
+          <div className="flex flex-col items-center justify-center h-full gap-3 p-12 text-center">
+            <div className="h-2.5 w-2.5 rounded-full bg-accent animate-pulse mb-1" />
+            <TextShimmer className="text-[17px] font-semibold tracking-wide" duration={2}>
+              Rendering high-fidelity keyframe visual memories…
+            </TextShimmer>
+            <p className="text-[13.5px] text-ink-3">Wan2.5 AI engine is generating character poses & locked lighting</p>
+          </div>
         )}
       </div>
     </AppShell>

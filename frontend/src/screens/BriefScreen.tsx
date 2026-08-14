@@ -4,6 +4,7 @@ import { AppShell } from '../components/AppShell'
 import { RightPanel, KV } from '../components/RightPanel'
 import { CheckCircle, CircleOutline } from '../components/icons'
 import { PeopleIcon, ClockIcon, PhoneIcon, FramePlaceholder } from '../components/icons2'
+import { TextShimmer } from '../components/ui/shimmer-text'
 import { getProduction, getProductionShots, listCharacters } from '../data/api'
 import { useProductionEvents } from '../hooks/useProductionEvents'
 
@@ -29,10 +30,13 @@ export function BriefScreen() {
     getProductionShots(productionId).then(setShots).catch(console.error)
   }, [productionId, lastEvent])
 
-  const charNames = characters.map((c: any) => c.name).join(', ') || '…'
+  const charNames = characters.length > 0
+    ? characters.map((c: any) => c.name).join(', ')
+    : <TextShimmer className="text-[14.5px]" duration={2}>Loading show characters…</TextShimmer>
+
   const episodeLabel = production?.episode_number
     ? `Episode ${String(production.episode_number).padStart(2, '0')} · ${production.episode_title || ''}`
-    : '…'
+    : <TextShimmer className="text-[19px] font-semibold" duration={2}>Loading episode details…</TextShimmer>
 
   const briefRows = [
     { icon: PeopleIcon, label: 'Characters', value: charNames },

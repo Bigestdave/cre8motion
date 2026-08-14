@@ -6,6 +6,7 @@ import { ThumbShotStrip, Thumb, type StripStatuses } from '../components/ShotStr
 import { VideoPlayer } from '../components/VideoPlayer'
 import { Checklist } from '../components/Checklist'
 import { ChevronRight } from '../components/icons'
+import { TextShimmer } from '../components/ui/shimmer-text'
 import { getProductionShots } from '../data/api'
 import { useProductionEvents } from '../hooks/useProductionEvents'
 
@@ -139,7 +140,13 @@ export function AnimationScreen() {
             aspect="aspect-[9/16]"
           />
         ) : (
-          <div className="text-[15px] text-ink-2">Loading animation…</div>
+          <div className="flex flex-col items-center justify-center gap-3 p-10 text-center">
+            <div className="h-2.5 w-2.5 rounded-full bg-accent animate-pulse mb-1" />
+            <TextShimmer className="text-[17px] font-semibold tracking-wide" duration={2.2}>
+              Synthesizing cinematic motion & camera choreography…
+            </TextShimmer>
+            <p className="text-[13.5px] text-ink-3">HappyHorse video engine is rendering animated video frames</p>
+          </div>
         )}
       </div>
     </AppShell>
