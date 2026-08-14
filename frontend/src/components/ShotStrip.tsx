@@ -39,22 +39,30 @@ export function Thumb({
   className?: string
 }) {
   const [imageFailed, setImageFailed] = useState(false)
+  const [imageLoaded, setImageLoaded] = useState(false)
   const artifactUrl = getArtifactDownloadUrl(artifactId)
 
-  useEffect(() => setImageFailed(false), [artifactUrl])
+  useEffect(() => {
+    setImageFailed(false)
+    setImageLoaded(false)
+  }, [artifactUrl])
 
   return (
     <div
-      className={`overflow-hidden rounded-md ${className}`}
+      className={`relative overflow-hidden rounded-md ${className}`}
       style={{ background: shotGradients[shotId] ?? shotGradients.S01 }}
       role="img"
       aria-label={`${shotId} thumbnail`}
     >
       {artifactUrl && !imageFailed && (
         <img
+          key={artifactUrl}
           src={artifactUrl}
           alt=""
-          className="h-full w-full object-cover"
+          className={`h-full w-full object-cover transition-opacity duration-150 ${
+            imageLoaded ? 'opacity-100' : 'opacity-0'
+          }`}
+          onLoad={() => setImageLoaded(true)}
           onError={() => setImageFailed(true)}
         />
       )}
