@@ -43,7 +43,10 @@ export function NewEpisodeScreen() {
 
       // 2. Create the episode record
       setProgress(`Saving "${draft.title}"…`)
-      const episode = await createEpisode(showId, draft)
+      const episode = await createEpisode(showId, {
+        ...draft,
+        duration_seconds: show?.default_duration_seconds || 45,
+      })
 
       // 3. Kick off the autonomous production pipeline
       setProgress('Starting the production pipeline…')

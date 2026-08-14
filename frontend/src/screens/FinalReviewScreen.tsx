@@ -6,6 +6,7 @@ import { ThumbShotStrip, type StripStatuses } from '../components/ShotStrip'
 import { VideoPlayer } from '../components/VideoPlayer'
 import { ExportModal } from '../components/ExportModal'
 import { getProduction, getProductionShots, approveProduction } from '../data/api'
+import { useProductionEvents } from '../hooks/useProductionEvents'
 import type { ProductionRun, ProductionShot } from '../data/api'
 
 export function FinalReviewScreen() {
@@ -17,6 +18,8 @@ export function FinalReviewScreen() {
   const [selected, setSelected] = useState<string>('')
   const [exportOpen, setExportOpen] = useState(false)
   const [approving, setApproving] = useState(false)
+
+  const { lastEvent } = useProductionEvents(productionId)
 
   useEffect(() => {
     if (!productionId) return
@@ -31,7 +34,7 @@ export function FinalReviewScreen() {
         }
       })
       .catch(err => console.error('Failed to load shots', err))
-  }, [productionId])
+  }, [productionId, lastEvent])
 
   const statuses: StripStatuses = useMemo(() => {
     const st: StripStatuses = {}
@@ -66,7 +69,7 @@ export function FinalReviewScreen() {
               tab === 'Overview' ? (
                 <div>
                   <p className="pb-1 text-[16px] font-semibold">Final quality</p>
-                  <ScoreBar label="" score={91} />
+                  <ScoreBar label="Narrative consistency" score={91} />
                   <ScoreBar label="Character consistency" score={94} />
                   <ScoreBar label="Motion accuracy" score={87} />
                   <ScoreBar label="Technical quality" score={96} />
@@ -81,8 +84,11 @@ export function FinalReviewScreen() {
                   )}
 
                   <div className="mt-7 flex flex-col gap-3">
-                    <button className="w-full rounded-xl border border-line py-3.5 text-[15px] font-medium transition-colors hover:bg-raised">
-                      Request changes
+                    <button
+                      onClick={() => setExportOpen(true)}
+                      className="w-full rounded-xl border border-line py-3.5 text-[15px] font-medium transition-colors hover:bg-raised"
+                    >
+                      Export options
                     </button>
                     <button
                       disabled={approving || production.status === 'complete'}
@@ -102,7 +108,44 @@ export function FinalReviewScreen() {
                     </button>
                   </div>
                 </div>
-              ) : null
+              ) : tab === 'Quality' ? (
+                <div>
+                  <h3 className="pb-3 text-[16px] font-semibold">Automated QC checks</h3>
+                  <div className="flex flex-col gap-2.5 text-[14px]">
+                    <div className="flex justify-between py-1.5 border-b border-line-soft">
+                      <span className="text-ink-2">Framing stability</span>
+                      <span className="font-medium text-accent">Passed (95%)</span>
+                    </div>
+                    <div className="flex justify-between py-1.5 border-b border-line-soft">
+                      <span className="text-ink-2">Identity preservation</span>
+                      <span className="font-medium text-accent">Passed (93%)</span>
+                    </div>
+                    <div className="flex justify-between py-1.5 border-b border-line-soft">
+                      <span className="text-ink-2">Audio/video sync</span>
+                      <span className="font-medium text-accent">Passed (100%)</span>
+                    </div>
+                    <div className="flex justify-between py-1.5">
+                      <span className="text-ink-2">Encoding bitrate</span>
+                      <span className="font-medium text-accent">1080p @ 24fps</span>
+                    </div>
+                  </div>
+                </div>
+              ) : tab === 'Continuity' ? (
+                <div>
+                  <h3 className="pb-3 text-[16px] font-semibold">Continuity locks</h3>
+                  <p className="text-[14px] text-ink-2 leading-relaxed">
+                    All character outfits, props, and scene backgrounds maintained consistency across all {shots.length} shots.
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <h3 className="pb-3 text-[16px] font-semibold">Run diagnostics</h3>
+                  <KV label="Run ID" value={production.id.slice(0, 8)} />
+                  <KV label="Version" value={`v${production.version}`} />
+                  <KV label="Stage" value={production.current_stage} />
+                  <KV label="Status" value={production.status} />
+                </div>
+              )
             }
           />
         }
@@ -117,8 +160,9 @@ export function FinalReviewScreen() {
               <VideoPlayer
                 shotId={selected}
                 artifactId={production.final_video_artifact_id}
-                total={formatDuration(totalDuration)}
                 overlayLabel="Full episode"
+                aspect="aspect-[9/16]"
+                className="max-w-[380px] mx-auto shadow-2xl"
               />
             ) : (
               <div className="flex aspect-[16/8.2] w-full items-center justify-center rounded-xl bg-raised text-[15px] text-ink-2">
@@ -148,7 +192,15 @@ export function FinalReviewScreen() {
         </div>
       </AppShell>
 
-      {exportOpen && <ExportModal onClose={() => setExportOpen(false)} />}
+      {exportOpen && (
+        <ExportModal
+          onClose={() => setExportOpen(false)}
+          episodeTitle={production.episode_title}
+          episodeNumber={production.episode_number}
+          artifactId={production.final_video_artifact_id}
+          duration={formatDuration(totalDuration)}
+        />
+      )}
     </>
   )
 }

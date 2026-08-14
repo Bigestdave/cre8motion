@@ -1,8 +1,14 @@
 import { useState } from 'react'
+import { getArtifactDownloadUrl } from '../data/api'
 import { CloseIcon, ChevronDown, CheckCircleSolid } from './icons'
 
 interface ExportModalProps {
   onClose: () => void
+  episodeTitle?: string | null
+  episodeNumber?: number | string | null
+  artifactId?: string | null
+  duration?: string
+  aspectRatio?: string
 }
 
 function Checkbox({ checked, label, onChange }: { checked: boolean; label: string; onChange: () => void }) {
@@ -33,10 +39,47 @@ function Select({ value }: { value: string }) {
   )
 }
 
-export function ExportModal({ onClose }: ExportModalProps) {
+export function ExportModal({
+  onClose,
+  episodeTitle,
+  episodeNumber,
+  artifactId,
+  duration,
+  aspectRatio = '1080 × 1920',
+}: ExportModalProps) {
   const [include, setInclude] = useState({ video: true, thumbnail: true, storyboard: false, report: false })
   const [exported, setExported] = useState(false)
+  const [copied, setCopied] = useState(false)
   const toggle = (k: keyof typeof include) => setInclude((p) => ({ ...p, [k]: !p[k] }))
+
+  const epNumStr = episodeNumber ? String(episodeNumber).padStart(2, '0') : '01'
+  const displayTitle = episodeTitle ? `Episode ${epNumStr} · ${episodeTitle}` : `Episode ${epNumStr}`
+  const filename = episodeTitle
+    ? `episode-${epNumStr}-${episodeTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.mp4`
+    : `episode-${epNumStr}.mp4`
+
+  const handleDownload = () => {
+    const url = getArtifactDownloadUrl(artifactId)
+    if (url) {
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+    }
+    onClose()
+  }
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (e) {
+      console.error('Failed to copy', e)
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6" onClick={onClose}>
@@ -44,7 +87,7 @@ export function ExportModal({ onClose }: ExportModalProps) {
         {!exported ? (
           <div className="rounded-2xl border border-line-soft bg-[#141514] p-7 shadow-2xl">
             <div className="flex items-start justify-between">
-              <h2 className="text-[22px] font-bold">Export Episode 05</h2>
+              <h2 className="text-[22px] font-bold truncate max-w-[340px]">Export {displayTitle}</h2>
               <button onClick={onClose} className="mt-1 text-ink-2 transition-colors hover:text-ink" aria-label="Close">
                 <CloseIcon />
               </button>
@@ -53,7 +96,7 @@ export function ExportModal({ onClose }: ExportModalProps) {
 
             <div className="flex items-center gap-4 pt-6">
               <span className="w-[90px] text-[14.5px] text-ink-2">Resolution</span>
-              <Select value="1080 × 1920" />
+              <Select value={aspectRatio} />
             </div>
             <div className="flex items-center gap-4 pt-3">
               <span className="w-[90px] text-[14.5px] text-ink-2">Format</span>
@@ -91,19 +134,22 @@ export function ExportModal({ onClose }: ExportModalProps) {
               <CheckCircleSolid size={26} />
               <h2 className="text-[22px] font-bold">Export ready</h2>
             </div>
-            <p className="pt-4 text-[15px]">fruitful-secrets-e05.mp4</p>
-            <p className="pt-1 text-[14px] text-ink-2">1080 × 1920 <span className="px-1 text-ink-3">·</span> 62 MB</p>
-
-            <button className="mt-6 flex w-full items-center justify-between rounded-xl border border-line px-4 py-3 text-[15px] transition-colors hover:bg-raised">
-              Advanced export settings
-              <ChevronDown className="text-ink-3" />
-            </button>
+            <p className="pt-4 text-[15px] font-medium truncate">{filename}</p>
+            <p className="pt-1 text-[14px] text-ink-2">
+              {aspectRatio} {duration ? <><span className="px-1 text-ink-3">·</span> {duration}</> : null}
+            </p>
 
             <div className="flex justify-center gap-3 pt-6">
-              <button className="flex-1 rounded-lg border border-line px-5 py-2.5 text-[15px] font-medium transition-colors hover:bg-raised">
-                Copy share link
+              <button
+                onClick={handleCopyLink}
+                className="flex-1 rounded-lg border border-line px-5 py-2.5 text-[15px] font-medium transition-colors hover:bg-raised"
+              >
+                {copied ? 'Copied link! ✓' : 'Copy share link'}
               </button>
-              <button onClick={onClose} className="flex-1 rounded-lg bg-ink px-5 py-2.5 text-[15px] font-semibold text-app transition-colors hover:bg-ink-2">
+              <button
+                onClick={handleDownload}
+                className="flex-1 rounded-lg bg-ink px-5 py-2.5 text-[15px] font-semibold text-app transition-colors hover:bg-ink-2"
+              >
                 Download
               </button>
             </div>
