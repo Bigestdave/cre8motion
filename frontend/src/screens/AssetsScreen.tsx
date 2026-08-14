@@ -62,20 +62,22 @@ export function AssetsScreen() {
             const chars = await listCharacters(show.id)
             await Promise.all(
               chars.map(async (c) => {
-                let imageUrl: string | undefined
-                let refsCount = 0
+                const bundledFallback = characterRefImage(c.name)
+                let imageUrl: string | undefined = bundledFallback
+                let refsCount = bundledFallback ? 1 : 0
                 try {
                   const refs = await listCharacterReferences(c.id)
-                  refsCount = refs.length
-                  if (refs[0]?.artifact_id) {
-                    imageUrl = getArtifactDownloadUrl(refs[0].artifact_id)
+                  if (refs.length > 0) {
+                    refsCount = refs.length
+                    if (refs[0]?.artifact_id) {
+                      imageUrl = getArtifactDownloadUrl(refs[0].artifact_id)
+                    }
                   }
                 } catch {
                   /* character has no references */
                 }
                 if (!imageUrl) {
-                  imageUrl = characterRefImage(c.name)
-                  if (imageUrl && refsCount === 0) refsCount = 1
+                  imageUrl = bundledFallback
                 }
                 all.push({
                   id: c.id,
@@ -83,8 +85,8 @@ export function AssetsScreen() {
                   description: c.canonical_description || '',
                   showId: show.id,
                   showTitle: show.title,
-                  imageUrl,
-                  referencesCount: refsCount,
+                  imageUrl: imageUrl || bundledFallback,
+                  referencesCount: Math.max(refsCount, bundledFallback ? 1 : 0),
                 })
               }),
             )
@@ -227,48 +229,61 @@ export function AssetsScreen() {
             <div className="mt-8">
               <h2 className="mb-4 text-[12.5px] font-semibold tracking-[0.1em] uppercase text-ink-4">Characters</h2>
               <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-5">
-                {filtered.map((char) => (
-                  <div
-                    key={char.id}
-                    onClick={() => setSelectedAsset(char)}
-                    className={`group cursor-pointer overflow-hidden rounded-xl border bg-surface transition-all ${
-                      selectedAsset?.id === char.id
-                        ? 'border-accent shadow-[0_0_0_3px_var(--color-accent-soft)]'
-                        : 'border-line-soft hover:border-line'
-                    }`}
-                  >
-                    <div className="relative flex aspect-[9/16] items-center justify-center overflow-hidden border-b border-line-soft bg-raised text-[13px] text-ink-4">
-                      {char.imageUrl ? (
-                        <img src={char.imageUrl} alt={char.name} className="h-full w-full object-contain transition-transform group-hover:scale-105" />
-                      ) : (
-                        <>
-                          <div className="absolute inset-0 bg-gradient-to-tr from-surface to-raised-2 opacity-50" />
-                          <span className="relative font-medium">No reference yet</span>
-                        </>
-                      )}
-                    </div>
-                    <div className="p-5">
-                      <h3 className="text-[16px] font-semibold tracking-tight text-ink">{char.name}</h3>
-                      <p className="mt-0.5 text-[13.5px] text-ink-3">{char.showTitle}</p>
-                      <p className="mt-2 text-[13px] text-ink-4">
-                        {char.referencesCount} reference{char.referencesCount === 1 ? '' : 's'}
-                      </p>
-                      <div className="mt-4 flex items-center gap-2 text-[13px]">
-                        {char.referencesCount > 0 ? (
-                          <>
-                            <span className="h-2 w-2 rounded-full bg-success" />
-                            <span className="text-success">Ready</span>
-                          </>
+                {filtered.map((char) => {
+                  const img = char.imageUrl || characterRefImage(char.name)
+                  return (
+                    <div
+                      key={char.id}
+                      onClick={() => setSelectedAsset(char)}
+                      className={`group cursor-pointer overflow-hidden rounded-xl border bg-surface transition-all ${
+                        selectedAsset?.id === char.id
+                          ? 'border-accent shadow-[0_0_0_3px_var(--color-accent-soft)]'
+                          : 'border-line-soft hover:border-line'
+                      }`}
+                    >
+                      <div className="relative flex aspect-[9/16] items-center justify-center overflow-hidden border-b border-line-soft bg-raised text-[13px] text-ink-4">
+                        {img ? (
+                          <img
+                            src={img}
+                            onError={(e) => {
+                              const fallback = characterRefImage(char.name)
+                              if (fallback && e.currentTarget.src !== fallback) {
+                                e.currentTarget.src = fallback
+                              }
+                            }}
+                            alt={char.name}
+                            className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                          />
                         ) : (
                           <>
-                            <span className="h-2 w-2 rounded-full bg-warn" />
-                            <span className="text-warn">Needs references</span>
+                            <div className="absolute inset-0 bg-gradient-to-tr from-surface to-raised-2 opacity-50" />
+                            <span className="relative font-medium">No reference yet</span>
                           </>
                         )}
                       </div>
+                      <div className="p-5">
+                        <h3 className="text-[16px] font-semibold tracking-tight text-ink">{char.name}</h3>
+                        <p className="mt-0.5 text-[13.5px] text-ink-3">{char.showTitle}</p>
+                        <p className="mt-2 text-[13px] text-ink-4">
+                          {char.referencesCount} reference{char.referencesCount === 1 ? '' : 's'}
+                        </p>
+                        <div className="mt-4 flex items-center gap-2 text-[13px]">
+                          {char.referencesCount > 0 ? (
+                            <>
+                              <span className="h-2 w-2 rounded-full bg-success" />
+                              <span className="text-success">Ready</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="h-2 w-2 rounded-full bg-warn" />
+                              <span className="text-warn">Needs references</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )}
@@ -288,29 +303,40 @@ export function AssetsScreen() {
               </div>
               <button
                 onClick={() => setSelectedAsset(null)}
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-3 transition-colors hover:bg-raised hover:text-ink"
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-line transition-colors hover:bg-selected"
               >
-                <CloseIcon size={20} />
+                <CloseIcon size={16} />
               </button>
             </div>
 
             {/* Drawer Content */}
-            <div className="flex flex-1 flex-col justify-between overflow-y-auto p-8">
-              <div className="flex-1">
-                <div className="relative flex aspect-[9/13] w-full items-center justify-center overflow-hidden rounded-xl border border-line bg-raised text-[14px] text-ink-4">
-                  {selectedAsset.imageUrl ? (
-                    <img src={selectedAsset.imageUrl} alt={selectedAsset.name} className="h-full w-full object-contain" />
-                  ) : (
-                    <span>No reference image uploaded yet</span>
-                  )}
-                </div>
+            <div className="flex-1 overflow-y-auto p-8">
+              {/* Main Reference Image */}
+              <div className="relative aspect-[9/16] w-full overflow-hidden rounded-xl border border-line bg-raised">
+                {selectedAsset.imageUrl || characterRefImage(selectedAsset.name) ? (
+                  <img
+                    src={selectedAsset.imageUrl || characterRefImage(selectedAsset.name)}
+                    onError={(e) => {
+                      const fallback = characterRefImage(selectedAsset.name)
+                      if (fallback && e.currentTarget.src !== fallback) {
+                        e.currentTarget.src = fallback
+                      }
+                    }}
+                    alt={selectedAsset.name}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-[14px] text-ink-4">
+                    No reference image uploaded
+                  </div>
+                )}
+              </div>
 
-                <div className="mt-8">
-                  <h4 className="mb-3 text-[14px] font-semibold text-ink">Canonical description</h4>
-                  <p className="text-[14px] leading-relaxed text-ink-2">
-                    {selectedAsset.description || 'No canonical description yet.'}
-                  </p>
-                </div>
+              <div className="mt-8">
+                <h4 className="mb-3 text-[14px] font-semibold text-ink">Canonical description</h4>
+                <p className="text-[14px] leading-relaxed text-ink-2">
+                  {selectedAsset.description || 'No canonical description yet.'}
+                </p>
               </div>
 
               {/* Action buttons at bottom */}
