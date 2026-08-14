@@ -4,6 +4,7 @@ import { AppShell } from '../components/AppShell'
 import { RightPanel, KV } from '../components/RightPanel'
 import { TextShotStrip, type StripStatuses } from '../components/ShotStrip'
 import { DocIcon, ChevronDown } from '../components/icons'
+import { TextShimmer } from '../components/ui/shimmer-text'
 import { getProductionShots } from '../data/api'
 import { useProductionEvents } from '../hooks/useProductionEvents'
 
@@ -79,7 +80,13 @@ export function PlanScreen() {
                   <ChevronDown className="text-ink-3" />
                 </button>
               </div>
-            ) : null
+            ) : (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <TextShimmer className="text-[15px] font-medium" duration={2}>
+                  Synthesizing continuity & scene requirements…
+                </TextShimmer>
+              </div>
+            )
           }
         />
       }
@@ -90,9 +97,13 @@ export function PlanScreen() {
           <div>
             <h1 className="text-[32px] font-bold tracking-tight">Production plan</h1>
             <p className="pt-2 text-[15px] text-ink-2">
-              {shots.length > 0
-                ? `${shots.length} shots prepared for a ${Math.round(totalSec)}-second episode.`
-                : 'The showrunner is planning shots — they will appear here as the pipeline works.'}
+              {shots.length > 0 ? (
+                `${shots.length} shots prepared for a ${Math.round(totalSec)}-second episode.`
+              ) : (
+                <TextShimmer className="text-[15px] font-medium text-ink" duration={2.2}>
+                  The showrunner is planning shots — they will appear here as the pipeline works…
+                </TextShimmer>
+              )}
             </p>
           </div>
           <p className="pt-3 text-[15px] text-ink-2">
@@ -103,28 +114,36 @@ export function PlanScreen() {
         </div>
 
         <div className="mt-8">
-          {shots.length > 0 ? shots.map((s) => {
-            const isSel = s.id === selected
-            const numStr = String(s.sequence_number).padStart(2, '0')
-            return (
-              <button
-                key={s.id}
-                onClick={() => setSelected(s.id)}
-                className={`flex w-full items-center gap-2 border-b px-4 py-[18px] text-left transition-colors ${
-                  isSel
-                    ? 'rounded-xl border border-accent bg-raised'
-                    : 'border-line-soft hover:bg-raised/50'
-                }`}
-              >
-                <span className="w-10 text-[16px] font-semibold text-ink-2">{numStr}</span>
-                <span className="pr-3 text-ink-3">·</span>
-                <span className={`w-[150px] text-[16px] font-semibold truncate ${isSel ? 'text-accent' : ''}`}>{s.story_function}</span>
-                <span className="flex-1 text-[15px] text-ink-2 truncate">{s.keyframe_prompt || 'Generating prompt...'}</span>
-                <span className="text-[15px] text-ink-2">{s.duration_seconds} sec</span>
-              </button>
-            )
-          }) : (
-             <div className="flex items-center justify-center h-40 text-ink-2">Loading shots...</div>
+          {shots.length > 0 ? (
+            shots.map((s) => {
+              const isSel = s.id === selected
+              const numStr = String(s.sequence_number).padStart(2, '0')
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => setSelected(s.id)}
+                  className={`flex w-full items-center gap-2 border-b px-4 py-[18px] text-left transition-colors ${
+                    isSel
+                      ? 'rounded-xl border border-accent bg-raised'
+                      : 'border-line-soft hover:bg-raised/50'
+                  }`}
+                >
+                  <span className="w-10 text-[16px] font-semibold text-ink-2">{numStr}</span>
+                  <span className="pr-3 text-ink-3">·</span>
+                  <span className={`w-[150px] text-[16px] font-semibold truncate ${isSel ? 'text-accent' : ''}`}>{s.story_function}</span>
+                  <span className="flex-1 text-[15px] text-ink-2 truncate">{s.keyframe_prompt || 'Generating prompt...'}</span>
+                  <span className="text-[15px] text-ink-2">{s.duration_seconds} sec</span>
+                </button>
+              )
+            })
+          ) : (
+            <div className="flex flex-col items-center justify-center h-64 gap-3 rounded-2xl border border-line-soft bg-surface/50 p-8 shadow-sm">
+              <div className="h-2 w-2 rounded-full bg-accent animate-pulse mb-1" />
+              <TextShimmer className="text-[18px] font-semibold tracking-wide" duration={2}>
+                Drafting shot breakdown & narrative cues…
+              </TextShimmer>
+              <p className="text-[14px] text-ink-3">Qwen-max reasoning engine is analyzing show continuity</p>
+            </div>
           )}
         </div>
       </div>

@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { WorkspaceShell } from '../components/WorkspaceShell'
 import { CheckCircle, ChevronDown } from '../components/icons'
 import { ClockIcon } from '../components/icons2'
+import { TextShimmer } from '../components/ui/shimmer-text'
 import { generateEpisodeDraft, createEpisode, startProduction, getShow, type Show } from '../data/api'
 
 export function NewEpisodeScreen() {
@@ -142,7 +143,11 @@ export function NewEpisodeScreen() {
           <div className="flex items-center gap-5">
             {error && <p className="max-w-[400px] text-right text-[13.5px] text-red-400">{error}</p>}
             {loading && progress ? (
-              <p className="text-right text-[13.5px] leading-snug text-accent">{progress}</p>
+              <div className="text-right">
+                <TextShimmer className="text-[14px] font-medium leading-snug" duration={2}>
+                  {progress}
+                </TextShimmer>
+              </div>
             ) : (
               <p className="text-right text-[13.5px] leading-snug text-ink-3">
                 Cre8Motion will write the script<br />and plan the full episode.
