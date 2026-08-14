@@ -63,17 +63,19 @@ def _persist_artifact_bytes(artifact: Artifact, local_path: str, max_bytes: int 
         print(f"Warning: could not persist artifact bytes for {local_path}: {exc}")
 
 
-async def wait_for_generation(poll, task_id: str, timeout_seconds: int = 180) -> dict:
-    """Poll a provider task without blocking the event loop indefinitely."""
+async def wait_for_generation(poll, task_id: str, timeout_seconds: int = 180, initial_interval: float = 1.5, max_interval: float = 3.0) -> dict:
+    """Poll a provider task with adaptive intervals without blocking the event loop."""
     if not task_id or task_id == "mock_task":
         return {"status": "FAILED"}
 
     deadline = asyncio.get_running_loop().time() + timeout_seconds
+    interval = initial_interval
     while asyncio.get_running_loop().time() < deadline:
-        result = poll(task_id)
+        result = await asyncio.to_thread(poll, task_id)
         if result.get("status") in {"SUCCEEDED", "FAILED"}:
             return result
-        await asyncio.sleep(5)
+        await asyncio.sleep(interval)
+        interval = min(interval + 0.5, max_interval)
     return {"status": "TIMED_OUT"}
 
 
@@ -186,7 +188,8 @@ async def execute_production_pipeline(production_id: str):
             environment = shot.environment if isinstance(shot.environment, dict) else {}
             return environment.get("location_name") or shot.location_id
 
-        for shot in shots:
+        # Concurrently generate all storyboards in parallel
+        async def _generate_shot_storyboard(shot):
             shot_spec = build_shot_spec(shot)
             prompt = compile_storyboard_prompt(
                 shot_spec=shot_spec,
@@ -194,19 +197,23 @@ async def execute_production_pipeline(production_id: str):
                 character_refs=ref_urls,
                 location_ref=shot_location(shot)
             )
-            # Storyboards use wan2.2-t2i-flash (fast/cheap) with compiled style rules.
-            task = image_provider.generate_storyboard(prompt, negative_prompt=neg_prompt)
+            task = await asyncio.to_thread(image_provider.generate_storyboard, prompt, negative_prompt=neg_prompt)
             res = await wait_for_generation(image_provider.poll_image_task, task.get("task_id", ""))
 
             storyboard_key = f"productions/{run.id}/shots/{shot.sequence_number:02d}/storyboard.png"
             storyboard_path = get_artifact_path(storyboard_key)
             os.makedirs(os.path.dirname(storyboard_path), exist_ok=True)
             if res.get("status") == "SUCCEEDED" and res.get("image_url"):
-                image_provider.download_image(res["image_url"], storyboard_path)
-                artifact_status = "approved"
+                await asyncio.to_thread(image_provider.download_image, res["image_url"], storyboard_path)
+                status = "approved"
             else:
                 create_stage_image(storyboard_key, f"Storyboard · Shot {shot.sequence_number:02d}", shot.sequence_number)
-                artifact_status = "demo_placeholder"
+                status = "demo_placeholder"
+            return shot, storyboard_key, storyboard_path, status, res
+
+        storyboard_results = await asyncio.gather(*(_generate_shot_storyboard(s) for s in shots))
+        for shot, storyboard_key, storyboard_path, artifact_status, res in storyboard_results:
+            if artifact_status == "demo_placeholder":
                 emit_event(db, "shot_generation_fallback", run.id, {
                     "shot_id": shot.id,
                     "stage": "STORYBOARD_GENERATION",
@@ -242,10 +249,10 @@ async def execute_production_pipeline(production_id: str):
 
         # 5. Keyframe
         transition(ProductionStage.KEYFRAME_GENERATION)
-        # Provider-hosted keyframe URLs (valid ~24h) let i2v run without a public
-        # backend URL — Qwen Cloud fetches its own OSS asset directly.
         keyframe_remote_urls = {}
-        for shot in shots:
+
+        # Concurrently generate all keyframes in parallel
+        async def _generate_shot_keyframe(shot):
             shot_spec = build_shot_spec(shot)
             prompt = compile_keyframe_prompt(
                 shot_spec=shot_spec,
@@ -253,20 +260,27 @@ async def execute_production_pipeline(production_id: str):
                 character_refs=ref_urls,
                 location_ref=shot_location(shot)
             )
-            # Keyframes use wan2.5-t2i-preview with compiled visual memory and negative prompt.
-            task = image_provider.generate_keyframe(prompt, ref_urls, negative_prompt=neg_prompt)
+            task = await asyncio.to_thread(image_provider.generate_keyframe, prompt, ref_urls, negative_prompt=neg_prompt)
             res = await wait_for_generation(image_provider.poll_image_task, task.get("task_id", ""))
 
             keyframe_key = f"productions/{run.id}/shots/{shot.sequence_number:02d}/keyframe.png"
             keyframe_path = get_artifact_path(keyframe_key)
             os.makedirs(os.path.dirname(keyframe_path), exist_ok=True)
+            remote_url = ""
             if res.get("status") == "SUCCEEDED" and res.get("image_url"):
-                image_provider.download_image(res["image_url"], keyframe_path)
-                keyframe_remote_urls[shot.id] = res["image_url"]
-                artifact_status = "approved"
+                await asyncio.to_thread(image_provider.download_image, res["image_url"], keyframe_path)
+                remote_url = res["image_url"]
+                status = "approved"
             else:
                 create_stage_image(keyframe_key, f"Keyframe · Shot {shot.sequence_number:02d}", shot.sequence_number)
-                artifact_status = "demo_placeholder"
+                status = "demo_placeholder"
+            return shot, keyframe_key, keyframe_path, status, remote_url, res
+
+        keyframe_results = await asyncio.gather(*(_generate_shot_keyframe(s) for s in shots))
+        for shot, keyframe_key, keyframe_path, artifact_status, remote_url, res in keyframe_results:
+            if remote_url:
+                keyframe_remote_urls[shot.id] = remote_url
+            if artifact_status == "demo_placeholder":
                 emit_event(db, "shot_generation_fallback", run.id, {
                     "shot_id": shot.id,
                     "stage": "KEYFRAME_GENERATION",
@@ -302,51 +316,42 @@ async def execute_production_pipeline(production_id: str):
 
         # 6. Video
         transition(ProductionStage.VIDEO_GENERATION)
-        for shot in shots:
-            if not check_budget(db, run.id, COST_TABLE['video_generation_per_sec'] * 5):
-                transition(ProductionStage.PAUSED)
-                emit_event(db, "budget_exhausted", run.id, {
-                    "shot_id": shot.id,
-                    "message": f"Budget exhausted before animating shot {shot.sequence_number:02d}; production paused.",
-                }, shot_id=shot.id)
-                return
+        video_sem = asyncio.Semaphore(3)
 
-            prompt = compile_video_prompt({"motion_prompt": shot.motion_prompt or shot.story_function})
-            keyframe_artifact = db.query(Artifact).filter(Artifact.id == shot.approved_keyframe_artifact_id).first()
-            # Only feed real (non-placeholder) keyframes to i2v. Prefer the
-            # provider-hosted OSS URL captured at generation time (Qwen Cloud can
-            # always fetch its own assets); fall back to our public media URL.
-            keyframe_is_real = bool(keyframe_artifact) and keyframe_artifact.status == "approved"
-            keyframe_url = ""
-            if keyframe_is_real:
-                keyframe_url = keyframe_remote_urls.get(shot.id, "")
-                if not keyframe_url and settings.PUBLIC_API_BASE_URL:
-                    keyframe_url = f"{settings.PUBLIC_API_BASE_URL.rstrip('/')}/media/{keyframe_artifact.storage_key}"
+        async def _generate_shot_video(shot):
+            async with video_sem:
+                prompt = compile_video_prompt({"motion_prompt": shot.motion_prompt or shot.story_function})
+                keyframe_artifact = db.query(Artifact).filter(Artifact.id == shot.approved_keyframe_artifact_id).first()
+                keyframe_is_real = bool(keyframe_artifact) and keyframe_artifact.status == "approved"
+                keyframe_url = ""
+                if keyframe_is_real:
+                    keyframe_url = keyframe_remote_urls.get(shot.id, "")
+                    if not keyframe_url and settings.PUBLIC_API_BASE_URL:
+                        keyframe_url = f"{settings.PUBLIC_API_BASE_URL.rstrip('/')}/media/{keyframe_artifact.storage_key}"
 
-            # Prefer image-to-video from the approved keyframe; fall back to
-            # text-to-video (happyhorse-1.1-t2v) from the motion prompt instead of
-            # instantly failing when no usable keyframe URL exists or the i2v
-            # request itself is rejected.
-            video_mode = "i2v"
-            task = video_provider.generate_i2v(keyframe_url, prompt) if keyframe_url else {"status": "FAILED"}
-            if task.get("status") == "FAILED":
-                video_mode = "t2v"
-                task = video_provider.generate_t2v(prompt)
-            res = await wait_for_generation(video_provider.poll_video_task, task.get("task_id", ""), timeout_seconds=600)
+                video_mode = "i2v"
+                task = await asyncio.to_thread(video_provider.generate_i2v, keyframe_url, prompt) if keyframe_url else {"status": "FAILED"}
+                if task.get("status") == "FAILED":
+                    video_mode = "t2v"
+                    task = await asyncio.to_thread(video_provider.generate_t2v, prompt)
+                res = await wait_for_generation(video_provider.poll_video_task, task.get("task_id", ""), timeout_seconds=600)
 
-            video_key = f"productions/{run.id}/shots/{shot.sequence_number:02d}/clip.mp4"
-            video_path = get_artifact_path(video_key)
-            os.makedirs(os.path.dirname(video_path), exist_ok=True)
-            if res.get("status") == "SUCCEEDED" and res.get("video_url"):
-                video_provider.download_video(res["video_url"], video_path)
-            # Only approve when the clip actually landed on disk — a failed
-            # download (e.g. transient SSL error) must not yield an empty
-            # "approved" artifact that breaks playback and assembly.
-            if os.path.isfile(video_path) and os.path.getsize(video_path) > 0:
-                artifact_status = "approved"
-            else:
-                create_stage_video(video_key, f"Animation · Shot {shot.sequence_number:02d}", shot.sequence_number, int(shot.duration_seconds or 5))
-                artifact_status = "demo_placeholder"
+                video_key = f"productions/{run.id}/shots/{shot.sequence_number:02d}/clip.mp4"
+                video_path = get_artifact_path(video_key)
+                os.makedirs(os.path.dirname(video_path), exist_ok=True)
+                if res.get("status") == "SUCCEEDED" and res.get("video_url"):
+                    await asyncio.to_thread(video_provider.download_video, res["video_url"], video_path)
+
+                if os.path.isfile(video_path) and os.path.getsize(video_path) > 0:
+                    status = "approved"
+                else:
+                    create_stage_video(video_key, f"Animation · Shot {shot.sequence_number:02d}", shot.sequence_number, int(shot.duration_seconds or 5))
+                    status = "demo_placeholder"
+                return shot, video_key, video_path, status, video_mode, res
+
+        video_results = await asyncio.gather(*(_generate_shot_video(s) for s in shots))
+        for shot, video_key, video_path, artifact_status, video_mode, res in video_results:
+            if artifact_status == "demo_placeholder":
                 emit_event(db, "shot_generation_fallback", run.id, {
                     "shot_id": shot.id,
                     "stage": "VIDEO_GENERATION",

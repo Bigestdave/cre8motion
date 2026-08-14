@@ -71,7 +71,7 @@ def _concat_clips(video_paths: list, production_id: str, final_video_path: str) 
             "-i", os.path.abspath(concat_list_path),
             "-vf", "scale=1080:1920:force_original_aspect_ratio=decrease,"
                    "pad=1080:1920:(ow-iw)/2:(oh-ih)/2,format=yuv420p",
-            "-r", "24", "-c:v", "libx264",
+            "-r", "24", "-c:v", "libx264", "-threads", "0", "-preset", "veryfast",
             os.path.abspath(final_video_path),
         ]
         try:
@@ -101,7 +101,7 @@ def _slideshow_from_keyframes(specs: list, final_video_path: str) -> bool:
         "-i", os.path.abspath(concat_list_path),
         "-vf", "scale=1080:1920:force_original_aspect_ratio=decrease,"
                "pad=1080:1920:(ow-iw)/2:(oh-ih)/2,format=yuv420p",
-        "-r", "24", "-c:v", "libx264",
+        "-r", "24", "-c:v", "libx264", "-threads", "0", "-preset", "veryfast",
         os.path.abspath(final_video_path),
     ]
     try:
