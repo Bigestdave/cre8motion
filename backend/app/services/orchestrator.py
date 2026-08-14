@@ -162,9 +162,6 @@ async def execute_production_pipeline(production_id: str):
             "creative_direction": style_profile.canonical_prompt if style_profile else "Cinematic lighting, polished"
         }
 
-        # 4. Storyboard
-        transition(ProductionStage.SHOT_PLANNING)
-        transition(ProductionStage.STORYBOARD_GENERATION)
         from app.services.prompt_compiler import CINEMATIC_3D_NEGATIVE, GRAPHIC_25D_NEGATIVE
         style_name = str(show_style_dict["animation_style"]).lower()
         neg_prompt = GRAPHIC_25D_NEGATIVE if ("2.5d" in style_name or "graphic" in style_name or "illustrated" in style_name) else CINEMATIC_3D_NEGATIVE
@@ -188,66 +185,7 @@ async def execute_production_pipeline(production_id: str):
             environment = shot.environment if isinstance(shot.environment, dict) else {}
             return environment.get("location_name") or shot.location_id
 
-        # Concurrently generate all storyboards in parallel
-        async def _generate_shot_storyboard(shot):
-            shot_spec = build_shot_spec(shot)
-            prompt = compile_storyboard_prompt(
-                shot_spec=shot_spec,
-                show_style=show_style_dict,
-                character_refs=ref_urls,
-                location_ref=shot_location(shot)
-            )
-            task = await asyncio.to_thread(image_provider.generate_storyboard, prompt, negative_prompt=neg_prompt)
-            res = await wait_for_generation(image_provider.poll_image_task, task.get("task_id", ""))
-
-            storyboard_key = f"productions/{run.id}/shots/{shot.sequence_number:02d}/storyboard.png"
-            storyboard_path = get_artifact_path(storyboard_key)
-            os.makedirs(os.path.dirname(storyboard_path), exist_ok=True)
-            if res.get("status") == "SUCCEEDED" and res.get("image_url"):
-                await asyncio.to_thread(image_provider.download_image, res["image_url"], storyboard_path)
-                status = "approved"
-            else:
-                create_stage_image(storyboard_key, f"Storyboard · Shot {shot.sequence_number:02d}", shot.sequence_number)
-                status = "demo_placeholder"
-            return shot, storyboard_key, storyboard_path, status, res
-
-        storyboard_results = await asyncio.gather(*(_generate_shot_storyboard(s) for s in shots))
-        for shot, storyboard_key, storyboard_path, artifact_status, res in storyboard_results:
-            if artifact_status == "demo_placeholder":
-                emit_event(db, "shot_generation_fallback", run.id, {
-                    "shot_id": shot.id,
-                    "stage": "STORYBOARD_GENERATION",
-                    "provider_status": res.get("status"),
-                    "message": f"Shot {shot.sequence_number:02d}: storyboard generation failed ({res.get('status')}); placeholder used.",
-                }, shot_id=shot.id)
-            artifact = Artifact(
-                production_run_id=run.id,
-                shot_id=shot.id,
-                artifact_type="storyboard",
-                storage_key=storyboard_key,
-                mime_type="image/png",
-                status=artifact_status,
-            )
-            _persist_artifact_bytes(artifact, storyboard_path)
-            db.add(artifact)
-            db.commit()
-            db.refresh(artifact)
-            shot.approved_storyboard_artifact_id = artifact.id
-            shot.status = "storyboard_approved"
-            db.commit()
-            debit(db, run.id, "STORYBOARD", "image_generation", COST_TABLE['storyboard_image'], shot.id)
-            emit_event(db, "shot_storyboard_ready", run.id, {
-                "shot_id": shot.id,
-                "status": artifact_status,
-                "message": f"Shot {shot.sequence_number:02d}: storyboard {artifact_status}.",
-            }, shot_id=shot.id)
-
-        transition(ProductionStage.STORYBOARD_QC)
-        for shot in shots:
-            review_storyboard(db, run.id, shot.id, "mock_path", {})
-            debit(db, run.id, "STORYBOARD_QC", "vision_review", COST_TABLE['vision_review'], shot.id)
-
-        # 5. Keyframe
+        # 4. Keyframe Generation
         transition(ProductionStage.KEYFRAME_GENERATION)
         keyframe_remote_urls = {}
 

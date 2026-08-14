@@ -9,7 +9,6 @@ import { PreflightScreen } from './screens/PreflightScreen'
 import { BriefScreen } from './screens/BriefScreen'
 import { PlanScreen } from './screens/PlanScreen'
 import { ReferencesScreen } from './screens/ReferencesScreen'
-import { StoryboardsScreen } from './screens/StoryboardsScreen'
 import { KeyframesReviewScreen } from './screens/KeyframesReviewScreen'
 import { KeyframesScreen } from './screens/KeyframesScreen'
 import { AnimationScreen } from './screens/AnimationScreen'
@@ -52,7 +51,7 @@ export default function App() {
         <Route path="/brief" element={<BriefScreen />} />
         <Route path="/plan" element={<PlanScreen />} />
         <Route path="/references" element={<ReferencesScreen />} />
-        <Route path="/storyboards" element={<StoryboardsScreen />} />
+        <Route path="/storyboards" element={<Navigate to="/keyframes" replace />} />
         <Route path="/keyframes" element={<KeyframesReviewScreen />} />
         <Route path="/keyframes-retry" element={<KeyframesScreen />} />
         <Route path="/animation" element={<AnimationScreen />} />

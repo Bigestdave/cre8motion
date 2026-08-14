@@ -122,22 +122,14 @@ export function KeyframesScreen() {
       {selectedShot ? (
         /* Side-by-side layout: two portrait images left, details right — no scrolling */
         <div className="flex h-full gap-0 overflow-hidden">
-          {/* Left: the two portrait images */}
-          <div className="flex shrink-0 gap-3 p-6">
+          {/* Left: focused keyframe portrait preview */}
+          <div className="flex shrink-0 p-6">
             <div className="flex flex-col gap-1.5">
-              <p className="text-[12.5px] font-medium text-ink-3">Keyframe</p>
+              <p className="text-[12.5px] font-medium text-ink-3">Keyframe preview</p>
               <Thumb
                 shotId={`S${numStr}`}
                 artifactId={selectedShot.approved_keyframe_artifact_id}
-                className="h-full max-h-[420px] w-[160px] rounded-xl"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <p className="text-[12.5px] font-medium text-ink-3">Storyboard</p>
-              <Thumb
-                shotId={`S${numStr}`}
-                artifactId={selectedShot.approved_storyboard_artifact_id}
-                className="h-full max-h-[420px] w-[160px] rounded-xl opacity-70"
+                className="h-full max-h-[420px] w-[260px] rounded-xl border border-line-soft shadow-lg"
               />
             </div>
           </div>

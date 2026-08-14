@@ -9,7 +9,6 @@ const routes: Record<StepName, string> = {
   Brief: '/brief',
   Plan: '/plan',
   References: '/references',
-  Storyboards: '/storyboards',
   Keyframes: '/keyframes',
   Animation: '/animation',
   Audio: '/audio',

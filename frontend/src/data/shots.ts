@@ -37,7 +37,7 @@ export const shotGradients: Record<string, string> = {
 }
 
 export const sidebarSteps = [
-  'Brief', 'Plan', 'References', 'Storyboards', 'Keyframes',
+  'Brief', 'Plan', 'References', 'Keyframes',
   'Animation', 'Audio', 'Assembly', 'Final review',
 ] as const
 

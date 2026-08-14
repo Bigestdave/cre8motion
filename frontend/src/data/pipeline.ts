@@ -1,8 +1,8 @@
 // Shared production pipeline metadata.
 export const STAGE_ORDER = [
   'QUEUED', 'CREATED', 'NORMALIZING_INPUT', 'PLANNING', 'PLAN_VALIDATION', 'REFERENCE_RESOLUTION',
-  'SHOT_PLANNING', 'STORYBOARD_GENERATION', 'STORYBOARD_QC', 'KEYFRAME_GENERATION', 'KEYFRAME_QC',
-  'VIDEO_GENERATION', 'VIDEO_QC', 'AUDIO_GENERATION', 'ASSEMBLY', 'FINAL_QC', 'READY_FOR_REVIEW',
+  'KEYFRAME_GENERATION', 'KEYFRAME_QC', 'VIDEO_GENERATION', 'VIDEO_QC', 'AUDIO_GENERATION',
+  'ASSEMBLY', 'FINAL_QC', 'READY_FOR_REVIEW',
 ]
 
 export function stageProgress(stage?: string | null): number {
@@ -14,8 +14,7 @@ export function stageProgress(stage?: string | null): number {
 export function stageScreen(stage?: string | null): string {
   const s = (stage || '').toUpperCase()
   if (s.startsWith('REFERENCE')) return '/references'
-  if (s.startsWith('STORYBOARD')) return '/storyboards'
-  if (s.startsWith('KEYFRAME')) return '/keyframes'
+  if (s.startsWith('KEYFRAME') || s.startsWith('STORYBOARD')) return '/keyframes'
   if (s.startsWith('VIDEO') || s === 'ANIMATION') return '/animation'
   if (s.startsWith('AUDIO')) return '/audio'
   if (s === 'ASSEMBLY') return '/assembly'
@@ -30,7 +29,7 @@ export function prettyStage(stage?: string | null): string {
 
 /** Sidebar step names, in pipeline order (mirrors data/shots.ts sidebarSteps). */
 export const SIDEBAR_STEPS = [
-  'Brief', 'Plan', 'References', 'Storyboards', 'Keyframes',
+  'Brief', 'Plan', 'References', 'Keyframes',
   'Animation', 'Audio', 'Assembly', 'Final review',
 ] as const
 
@@ -38,8 +37,7 @@ export const SIDEBAR_STEPS = [
 export function stageStep(stage?: string | null): (typeof SIDEBAR_STEPS)[number] {
   const s = (stage || '').toUpperCase()
   if (s.startsWith('REFERENCE')) return 'References'
-  if (s.startsWith('STORYBOARD')) return 'Storyboards'
-  if (s.startsWith('KEYFRAME')) return 'Keyframes'
+  if (s.startsWith('KEYFRAME') || s.startsWith('STORYBOARD')) return 'Keyframes'
   if (s.startsWith('VIDEO') || s === 'ANIMATION') return 'Animation'
   if (s.startsWith('AUDIO')) return 'Audio'
   if (s === 'ASSEMBLY') return 'Assembly'
