@@ -1,4 +1,5 @@
 import asyncio
+import gc
 import os
 import traceback
 from app.db.session import SessionLocal
@@ -25,9 +26,9 @@ from app.providers.qwen import QwenImageProvider, QwenVideoProvider
 image_provider = QwenImageProvider()
 video_provider = QwenVideoProvider()
 
-# Artifacts up to this size are mirrored into the Artifact.data DB column so they
-# survive Render's ephemeral disk (matches app/api/artwork.py _store_artifact).
-MAX_DB_ARTIFACT_BYTES = 20 * 1024 * 1024
+# Only lightweight image assets (<= 512KB) are mirrored in DB to preserve RAM.
+# Large video files stay on disk to keep memory consumption well under 256MB.
+MAX_DB_ARTIFACT_BYTES = 512 * 1024
 
 STAGE_MESSAGES = {
     ProductionStage.NORMALIZING_INPUT: "Normalizing the creative input into a structured episode brief.",
@@ -51,8 +52,10 @@ STAGE_MESSAGES = {
 
 
 def _persist_artifact_bytes(artifact: Artifact, local_path: str, max_bytes: int = MAX_DB_ARTIFACT_BYTES):
-    """Mirror generated file bytes into Artifact.data so they survive redeploys."""
+    """Mirror lightweight images into Artifact.data. Never load large video files into RAM."""
     try:
+        if artifact.artifact_type in ("video_clip", "final_video"):
+            return
         if os.path.isfile(local_path):
             size = os.path.getsize(local_path)
             artifact.file_size_bytes = size
@@ -251,6 +254,7 @@ async def execute_production_pipeline(production_id: str):
         for shot in shots:
             review_keyframe(db, run.id, shot.id, "mock_path", {}, ref_urls)
             debit(db, run.id, "KEYFRAME_QC", "vision_review", COST_TABLE['vision_review'], shot.id)
+        gc.collect()
 
         # 6. Video
         transition(ProductionStage.VIDEO_GENERATION)
@@ -336,6 +340,7 @@ async def execute_production_pipeline(production_id: str):
                 }, shot_id=shot.id)
 
         transition(ProductionStage.AUDIO_GENERATION)
+        gc.collect()
 
         # 7. Assembly
         # assemble_production emits its own assembly_completed / assembly_skipped
@@ -345,6 +350,7 @@ async def execute_production_pipeline(production_id: str):
         if final_art:
             _persist_artifact_bytes(final_art, get_artifact_path(final_art.storage_key))
             db.commit()
+        gc.collect()
 
         # 8. Final QC
         transition(ProductionStage.FINAL_QC)

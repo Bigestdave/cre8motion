@@ -5,8 +5,13 @@ from fastapi.staticfiles import StaticFiles
 from app.api import artifacts, artwork, characters, episodes, events, productions, shows, shots
 from app.core.config import settings
 from app.core.storage import ARTIFACTS_DIR
+from app.db import init_and_seed_db
 
 app = FastAPI(title=settings.PROJECT_NAME)
+
+@app.on_event("startup")
+def on_startup():
+    init_and_seed_db()
 
 app.add_middleware(
     CORSMiddleware,
