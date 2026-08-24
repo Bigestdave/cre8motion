@@ -256,114 +256,114 @@ async def execute_production_pipeline(production_id: str):
             debit(db, run.id, "KEYFRAME_QC", "vision_review", COST_TABLE['vision_review'], shot.id)
         gc.collect()
 
-        # 6. Video
+        # 6. Video Generation (Fire-and-forget submission; background poller tracks completion)
         transition(ProductionStage.VIDEO_GENERATION)
-        video_sem = asyncio.Semaphore(3)
+        all_shots_immediate = True
 
-        async def _generate_shot_video(shot):
-            async with video_sem:
-                prompt = compile_video_prompt({"motion_prompt": shot.motion_prompt or shot.story_function})
-                keyframe_artifact = db.query(Artifact).filter(Artifact.id == shot.approved_keyframe_artifact_id).first()
-                keyframe_is_real = bool(keyframe_artifact) and keyframe_artifact.status == "approved"
-                keyframe_url = ""
-                if keyframe_is_real:
-                    keyframe_url = keyframe_remote_urls.get(shot.id, "")
-                    if not keyframe_url and settings.PUBLIC_API_BASE_URL:
-                        keyframe_url = f"{settings.PUBLIC_API_BASE_URL.rstrip('/')}/media/{keyframe_artifact.storage_key}"
+        for shot in shots:
+            prompt = compile_video_prompt({"motion_prompt": shot.motion_prompt or shot.story_function})
+            keyframe_artifact = db.query(Artifact).filter(Artifact.id == shot.approved_keyframe_artifact_id).first()
+            keyframe_is_real = bool(keyframe_artifact) and keyframe_artifact.status == "approved"
+            keyframe_url = ""
+            if keyframe_is_real:
+                keyframe_url = keyframe_remote_urls.get(shot.id, "")
+                if not keyframe_url and settings.PUBLIC_API_BASE_URL:
+                    keyframe_url = f"{settings.PUBLIC_API_BASE_URL.rstrip('/')}/media/{keyframe_artifact.storage_key}"
 
-                video_mode = "i2v"
-                task = await asyncio.to_thread(video_provider.generate_i2v, keyframe_url, prompt) if keyframe_url else {"status": "FAILED"}
-                if task.get("status") == "FAILED":
-                    video_mode = "t2v"
-                    task = await asyncio.to_thread(video_provider.generate_t2v, prompt)
-                res = await wait_for_generation(video_provider.poll_video_task, task.get("task_id", ""), timeout_seconds=600)
+            video_mode = "i2v"
+            task = video_provider.generate_i2v(keyframe_url, prompt) if keyframe_url else {"status": "FAILED"}
+            if task.get("status") == "FAILED":
+                video_mode = "t2v"
+                task = video_provider.generate_t2v(prompt)
 
-                video_key = f"productions/{run.id}/shots/{shot.sequence_number:02d}/clip.mp4"
-                video_path = get_artifact_path(video_key)
-                os.makedirs(os.path.dirname(video_path), exist_ok=True)
-                if res.get("status") == "SUCCEEDED" and res.get("video_url"):
-                    await asyncio.to_thread(video_provider.download_video, res["video_url"], video_path)
-
-                if os.path.isfile(video_path) and os.path.getsize(video_path) > 0:
-                    status = "approved"
-                else:
-                    create_stage_video(video_key, f"Animation · Shot {shot.sequence_number:02d}", shot.sequence_number, int(shot.duration_seconds or 5))
-                    status = "demo_placeholder"
-                return shot, video_key, video_path, status, video_mode, res
-
-        video_results = await asyncio.gather(*(_generate_shot_video(s) for s in shots))
-        for shot, video_key, video_path, artifact_status, video_mode, res in video_results:
-            if artifact_status == "demo_placeholder":
-                emit_event(db, "shot_generation_fallback", run.id, {
-                    "shot_id": shot.id,
-                    "stage": "VIDEO_GENERATION",
-                    "mode": video_mode,
-                    "provider_status": res.get("status"),
-                    "message": f"Shot {shot.sequence_number:02d}: {video_mode} animation failed ({res.get('status')}); placeholder clip used.",
-                }, shot_id=shot.id)
-            art = Artifact(
+            task_id = task.get("task_id", "")
+            attempt = GenerationAttempt(
                 production_run_id=run.id,
                 shot_id=shot.id,
-                artifact_type="video_clip",
-                storage_key=video_key,
-                mime_type="video/mp4",
-                duration_seconds=int(shot.duration_seconds or 5),
-                status=artifact_status,
+                operation="video_generation",
+                provider="qwen_cloud",
+                model=settings.QWEN_I2V_MODEL if video_mode == "i2v" else settings.QWEN_T2V_MODEL,
+                compiled_prompt=prompt,
+                provider_request_id=task_id,
+                status="created",
             )
-            _persist_artifact_bytes(art, video_path)
-            db.add(art)
+            db.add(attempt)
             db.commit()
-            db.refresh(art)
 
-            shot.approved_video_artifact_id = art.id
-            shot.status = "video_approved"
-            db.commit()
-            debit(db, run.id, "VIDEO", "video_generation", COST_TABLE['video_generation_per_sec'] * 5, shot.id)
-            emit_event(db, "shot_video_ready", run.id, {
-                "shot_id": shot.id,
-                "status": artifact_status,
-                "mode": video_mode,
-                "message": f"Shot {shot.sequence_number:02d}: video clip {artifact_status} ({video_mode}).",
-            }, shot_id=shot.id)
+            if not task_id or task_id == "mock_task" or settings.DEMO_MODE:
+                # Instant local fallback for demo/offline runs
+                video_key = f"productions/{run.id}/shots/{shot.sequence_number:02d}/clip.mp4"
+                create_stage_video(
+                    video_key,
+                    f"Animation · Shot {shot.sequence_number:02d}",
+                    shot.sequence_number,
+                    int(shot.duration_seconds or 5),
+                )
+                art = Artifact(
+                    production_run_id=run.id,
+                    shot_id=shot.id,
+                    artifact_type="video_clip",
+                    storage_key=video_key,
+                    mime_type="video/mp4",
+                    duration_seconds=int(shot.duration_seconds or 5),
+                    status="demo_placeholder",
+                )
+                db.add(art)
+                db.commit()
+                db.refresh(art)
 
-        transition(ProductionStage.VIDEO_QC)
-        for shot in shots:
-            report = review_video(db, run.id, shot.id, "mock_path", {})
-            debit(db, run.id, "VIDEO_QC", "vision_review", COST_TABLE['vision_review'], shot.id)
+                shot.approved_video_artifact_id = art.id
+                shot.status = "video_approved"
+                attempt.status = "failed"
+                attempt.result_artifact_id = art.id
+                db.commit()
 
-            if report.status == "failed" and should_retry(db, shot.id):
-                plan = diagnose_and_retry(db, run.id, shot.id, {"score": report.overall_score}, "mock_prompt")
-                emit_event(db, "selective_retry", run.id, {
+                emit_event(db, "shot_video_ready", run.id, {
                     "shot_id": shot.id,
-                    "plan": plan,
-                    "message": f"Shot {shot.sequence_number:02d}: video QC failed; selective retry planned.",
+                    "status": "demo_placeholder",
+                    "mode": video_mode,
+                    "message": f"Shot {shot.sequence_number:02d}: local preview clip ready.",
+                }, shot_id=shot.id)
+            else:
+                shot.status = "video_generating"
+                db.commit()
+                all_shots_immediate = False
+                emit_event(db, "shot_video_submitted", run.id, {
+                    "shot_id": shot.id,
+                    "mode": video_mode,
+                    "task_id": task_id,
+                    "message": f"Shot {shot.sequence_number:02d}: animation job submitted to cloud.",
                 }, shot_id=shot.id)
 
-        transition(ProductionStage.AUDIO_GENERATION)
-        gc.collect()
+        # If all shots completed immediately (demo mode), run Assembly and Final QC now.
+        # Otherwise, the background poller will assemble once cloud tasks finish.
+        if all_shots_immediate:
+            transition(ProductionStage.VIDEO_QC)
+            for shot in shots:
+                review_video(db, run.id, shot.id, "mock_path", {})
+                debit(db, run.id, "VIDEO_QC", "vision_review", COST_TABLE['vision_review'], shot.id)
 
-        # 7. Assembly
-        # assemble_production emits its own assembly_completed / assembly_skipped
-        # event (including which path it took), so we only persist bytes here.
-        transition(ProductionStage.ASSEMBLY)
-        final_art = assemble_production(db, run.id)
-        if final_art:
-            _persist_artifact_bytes(final_art, get_artifact_path(final_art.storage_key))
+            transition(ProductionStage.AUDIO_GENERATION)
+            gc.collect()
+
+            transition(ProductionStage.ASSEMBLY)
+            final_art = assemble_production(db, run.id)
+            if final_art:
+                _persist_artifact_bytes(final_art, get_artifact_path(final_art.storage_key))
+                db.commit()
+            gc.collect()
+
+            transition(ProductionStage.FINAL_QC)
+            if final_art:
+                final_qc(db, run.id, get_artifact_path(final_art.storage_key), brief)
+
+            transition(ProductionStage.READY_FOR_REVIEW)
+            run.status = "needs_review"
             db.commit()
-        gc.collect()
-
-        # 8. Final QC
-        transition(ProductionStage.FINAL_QC)
-        if final_art:
-            final_qc(db, run.id, get_artifact_path(final_art.storage_key), brief)
-
-        transition(ProductionStage.READY_FOR_REVIEW)
-        run.status = "needs_review"
-        db.commit()
-        emit_event(db, "production_completed", run.id, {
-            "stage": run.current_stage,
-            "message": "Production completed and ready for review.",
-        })
+            emit_event(db, "production_completed", run.id, {
+                "stage": run.current_stage,
+                "message": "Production completed and ready for review.",
+            })
 
     except Exception as e:
         tb = traceback.format_exc()

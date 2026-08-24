@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -6,12 +7,14 @@ from app.api import artifacts, artwork, characters, episodes, events, production
 from app.core.config import settings
 from app.core.storage import ARTIFACTS_DIR
 from app.db import init_and_seed_db
+from app.services import start_video_poller_loop
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
 @app.on_event("startup")
-def on_startup():
+async def on_startup():
     init_and_seed_db()
+    asyncio.create_task(start_video_poller_loop())
 
 app.add_middleware(
     CORSMiddleware,
