@@ -354,7 +354,7 @@ FRUITFUL_SECRETS_SHOTS = [
 class QwenReasoningProvider(ReasoningProvider):
     def __init__(self):
         self.client = OpenAI(
-            api_key=settings.QWEN_API_KEY,
+            api_key=settings.QWEN_API_KEY or "dummy_key",
             base_url=settings.QWEN_BASE_URL,
             timeout=90.0,
             max_retries=1,
@@ -749,7 +749,7 @@ Return a JSON containing 'title', 'idea', and 'script' keys."""
 class QwenVisionProvider(VisionProvider):
     def __init__(self):
         self.client = OpenAI(
-            api_key=settings.QWEN_API_KEY,
+            api_key=settings.QWEN_API_KEY or "dummy_key",
             base_url=settings.QWEN_BASE_URL,
             timeout=90.0,
             max_retries=1,

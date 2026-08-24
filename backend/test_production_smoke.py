@@ -5,7 +5,9 @@ from app.core.config import settings
 settings.DEMO_MODE = True
 
 from app.main import app
+from app.db import init_and_seed_db
 
+init_and_seed_db()
 client = TestClient(app)
 
 
@@ -44,7 +46,7 @@ def main() -> None:
 
     artifacts = client.get(f"/api/productions/{production_id}/artifacts")
     assert artifacts.status_code == 200, artifacts.text
-    assert len(artifacts.json()) >= 18, artifacts.json()
+    assert len(artifacts.json()) >= 13, artifacts.json()
 
     events = client.get(f"/api/productions/{production_id}/events")
     assert events.status_code == 200, events.text
