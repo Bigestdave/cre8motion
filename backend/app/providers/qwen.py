@@ -877,10 +877,11 @@ class QwenImageProvider(ImageProvider):
 
     def download_image(self, url: str, local_path: str) -> str:
         try:
-            resp = httpx.get(url, timeout=60, follow_redirects=True)
-            resp.raise_for_status()
-            with open(local_path, "wb") as f:
-                f.write(resp.content)
+            with httpx.stream("GET", url, timeout=60, follow_redirects=True) as resp:
+                resp.raise_for_status()
+                with open(local_path, "wb") as f:
+                    for chunk in resp.iter_bytes(chunk_size=65536):
+                        f.write(chunk)
             return local_path
         except Exception as e:
             print(f"Error downloading image: {e}")
@@ -973,23 +974,21 @@ class QwenVideoProvider(VideoProvider):
             return {"status": "FAILED"}
 
     def download_video(self, url: str, local_path: str) -> str:
-        # Transient TLS/network failures (e.g. SSL BAD_SIGNATURE) happen on large
-        # OSS downloads; retry with a fresh connection before giving up.
         last_error = None
         for attempt in range(3):
             try:
-                resp = httpx.get(url, timeout=300, follow_redirects=True)
-                resp.raise_for_status()
-                with open(local_path, "wb") as f:
-                    f.write(resp.content)
-                if os.path.getsize(local_path) > 0:
+                with httpx.stream("GET", url, timeout=300, follow_redirects=True) as resp:
+                    resp.raise_for_status()
+                    with open(local_path, "wb") as f:
+                        for chunk in resp.iter_bytes(chunk_size=65536):
+                            f.write(chunk)
+                if os.path.isfile(local_path) and os.path.getsize(local_path) > 0:
                     return local_path
                 last_error = "empty file"
             except Exception as e:
                 last_error = e
                 print(f"Error downloading video (attempt {attempt + 1}/3): {e}")
         print(f"Video download failed after retries: {last_error}")
-        # Remove any zero-byte partial so callers can detect the failure by size.
         try:
             if os.path.isfile(local_path) and os.path.getsize(local_path) == 0:
                 os.remove(local_path)

@@ -192,30 +192,33 @@ async def execute_production_pipeline(production_id: str):
         transition(ProductionStage.KEYFRAME_GENERATION)
         keyframe_remote_urls = {}
 
-        # Concurrently generate all keyframes in parallel
-        async def _generate_shot_keyframe(shot):
-            shot_spec = build_shot_spec(shot)
-            prompt = compile_keyframe_prompt(
-                shot_spec=shot_spec,
-                show_style=show_style_dict,
-                character_refs=ref_urls,
-                location_ref=shot_location(shot)
-            )
-            task = await asyncio.to_thread(image_provider.generate_keyframe, prompt, ref_urls, negative_prompt=neg_prompt)
-            res = await wait_for_generation(image_provider.poll_image_task, task.get("task_id", ""))
+        # Concurrently generate keyframes with bounded concurrency (max 2 at a time)
+        keyframe_sem = asyncio.Semaphore(2)
 
-            keyframe_key = f"productions/{run.id}/shots/{shot.sequence_number:02d}/keyframe.png"
-            keyframe_path = get_artifact_path(keyframe_key)
-            os.makedirs(os.path.dirname(keyframe_path), exist_ok=True)
-            remote_url = ""
-            if res.get("status") == "SUCCEEDED" and res.get("image_url"):
-                await asyncio.to_thread(image_provider.download_image, res["image_url"], keyframe_path)
-                remote_url = res["image_url"]
-                status = "approved"
-            else:
-                create_stage_image(keyframe_key, f"Keyframe · Shot {shot.sequence_number:02d}", shot.sequence_number)
-                status = "demo_placeholder"
-            return shot, keyframe_key, keyframe_path, status, remote_url, res
+        async def _generate_shot_keyframe(shot):
+            async with keyframe_sem:
+                shot_spec = build_shot_spec(shot)
+                prompt = compile_keyframe_prompt(
+                    shot_spec=shot_spec,
+                    show_style=show_style_dict,
+                    character_refs=ref_urls,
+                    location_ref=shot_location(shot)
+                )
+                task = await asyncio.to_thread(image_provider.generate_keyframe, prompt, ref_urls, negative_prompt=neg_prompt)
+                res = await wait_for_generation(image_provider.poll_image_task, task.get("task_id", ""))
+
+                keyframe_key = f"productions/{run.id}/shots/{shot.sequence_number:02d}/keyframe.png"
+                keyframe_path = get_artifact_path(keyframe_key)
+                os.makedirs(os.path.dirname(keyframe_path), exist_ok=True)
+                remote_url = ""
+                if res.get("status") == "SUCCEEDED" and res.get("image_url"):
+                    await asyncio.to_thread(image_provider.download_image, res["image_url"], keyframe_path)
+                    remote_url = res["image_url"]
+                    status = "approved"
+                else:
+                    create_stage_image(keyframe_key, f"Keyframe · Shot {shot.sequence_number:02d}", shot.sequence_number)
+                    status = "demo_placeholder"
+                return shot, keyframe_key, keyframe_path, status, remote_url, res
 
         keyframe_results = await asyncio.gather(*(_generate_shot_keyframe(s) for s in shots))
         for shot, keyframe_key, keyframe_path, artifact_status, remote_url, res in keyframe_results:
